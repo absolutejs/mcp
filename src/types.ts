@@ -14,13 +14,54 @@ export type McpToolAnnotations = {
   title?: string;
 };
 
-/** One callable tool. `inputSchema` is a JSON Schema object; `handler` receives
- *  the client's `arguments` and returns text (the tool's `content`). */
+/** Rich tool-result content blocks. A handler may return a bare string (wrapped
+ *  as one text block), an array of these, or a full {@link McpToolResult}. */
+export type McpTextContent = { text: string; type: "text" };
+export type McpImageContent = {
+  data: string;
+  mimeType: string;
+  type: "image";
+};
+export type McpAudioContent = {
+  data: string;
+  mimeType: string;
+  type: "audio";
+};
+export type McpResourceLink = {
+  description?: string;
+  mimeType?: string;
+  name?: string;
+  type: "resource_link";
+  uri: string;
+};
+export type McpContent =
+  | McpAudioContent
+  | McpImageContent
+  | McpResourceLink
+  | McpTextContent;
+
+export type McpToolResult = {
+  content: McpContent[];
+  isError?: boolean;
+  /** Structured output validated against the tool's `outputSchema`, if any. */
+  structuredContent?: Record<string, unknown>;
+};
+
+/** What a tool handler may return. A bare string is the common case. */
+export type McpToolReturn = McpContent[] | McpToolResult | string;
+
+/** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
   annotations?: McpToolAnnotations;
   description: string;
-  handler: (args: unknown) => Promise<string> | string;
+  handler: (args: unknown) => McpToolReturn | Promise<McpToolReturn>;
   inputSchema: Record<string, unknown>;
+  /** JSON Schema for `structuredContent`, advertised on `tools/list`. */
+  outputSchema?: Record<string, unknown>;
+  /** If set, the tool is only listed and callable when the caller's scopes
+   *  include this. Tools without a scope are always available. Fails closed:
+   *  a scoped tool is hidden when the caller's scopes are unknown. */
+  scope?: string;
 };
 
 export type McpToolRegistry = Record<string, McpTool>;
@@ -50,9 +91,10 @@ export type McpPromptDefinition = {
  *  entity it touched) and `onCall` can read it back for the audit row. */
 export type McpCallMeta = Record<string, unknown>;
 
-/** What `authorize` returns: the resolved caller, or a reason for the 401. */
+/** What `authorize` returns: the resolved caller (plus the caller's scopes, if
+ *  any tools are scope-gated), or a reason for the 401. */
 export type McpAuthResult<Caller> =
-  | { caller: Caller; ok: true }
+  | { caller: Caller; ok: true; scopes?: string[] }
   | { ok: false; reason: string };
 
 /** Returned by `beforeCall` to refuse a tool call without running it — the

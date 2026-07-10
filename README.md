@@ -114,14 +114,12 @@ different scope, a stricter `authorize` (role + MFA + a kill switch, re-checked
 live), a rate-limit `beforeCall`, and an audit `onCall`:
 
 ```ts
-app
-  .use(mcpServer({ path: "/mcp" /* member */ }))
-  .use(
-    mcpServer({
-      path: "/mcp/admin",
-      scopesSupported: ["openid", "mcp:admin"] /* stricter */,
-    }),
-  );
+app.use(mcpServer({ path: "/mcp" /* member */ })).use(
+  mcpServer({
+    path: "/mcp/admin",
+    scopesSupported: ["openid", "mcp:admin"] /* stricter */,
+  }),
+);
 ```
 
 Only one endpoint per app should set `serveRootMetadata` (the un-suffixed alias).

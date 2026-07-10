@@ -33,12 +33,15 @@ const rpc = (method: string, params?: unknown, id: number | string = 1) => ({
 });
 
 const caller: Caller = { id: "u1" };
+const run = (
+  config: McpServerConfig<Caller>,
+  message: unknown,
+  scopes: string[] = [],
+) => dispatchMcp(config, caller, scopes, message);
 
 describe("dispatchMcp", () => {
   test("initialize advertises only the configured capabilities", async () => {
-    const result = await body(
-      await dispatchMcp(baseConfig(), caller, rpc("initialize")),
-    );
+    const result = await body(await run(baseConfig(), rpc("initialize")));
     const capabilities = (result.result as Record<string, unknown>)
       .capabilities as Record<string, unknown>;
     expect(capabilities.tools).toBeDefined();
@@ -51,21 +54,13 @@ describe("dispatchMcp", () => {
       supportedProtocols: ["2025-06-18", "2024-11-05"],
     });
     const ok = await body(
-      await dispatchMcp(
-        cfg,
-        caller,
-        rpc("initialize", { protocolVersion: "2024-11-05" }),
-      ),
+      await run(cfg, rpc("initialize", { protocolVersion: "2024-11-05" })),
     );
     expect((ok.result as Record<string, unknown>).protocolVersion).toBe(
       "2024-11-05",
     );
     const fallback = await body(
-      await dispatchMcp(
-        cfg,
-        caller,
-        rpc("initialize", { protocolVersion: "1999-01-01" }),
-      ),
+      await run(cfg, rpc("initialize", { protocolVersion: "1999-01-01" })),
     );
     expect((fallback.result as Record<string, unknown>).protocolVersion).toBe(
       "2025-06-18",
@@ -83,9 +78,7 @@ describe("dispatchMcp", () => {
         },
       }),
     });
-    const result = await body(
-      await dispatchMcp(cfg, caller, rpc("tools/list")),
-    );
+    const result = await body(await run(cfg, rpc("tools/list")));
     const tools = (result.result as Record<string, unknown>).tools as unknown[];
     expect(tools).toHaveLength(1);
     expect(tools[0]).toMatchObject({
@@ -96,9 +89,8 @@ describe("dispatchMcp", () => {
 
   test("tools/call runs the handler and returns text content", async () => {
     const result = await body(
-      await dispatchMcp(
+      await run(
         baseConfig(),
-        caller,
         rpc("tools/call", { arguments: { a: 1 }, name: "echo" }),
       ),
     );
@@ -126,7 +118,7 @@ describe("dispatchMcp", () => {
       }),
     });
     const result = await body(
-      await dispatchMcp(cfg, caller, rpc("tools/call", { name: "echo" })),
+      await run(cfg, rpc("tools/call", { name: "echo" })),
     );
     const payload = result.result as Record<string, unknown>;
     expect(payload.isError).toBe(true);
@@ -152,7 +144,7 @@ describe("dispatchMcp", () => {
         },
       }),
     });
-    await dispatchMcp(cfg, caller, rpc("tools/call", { name: "touch" }));
+    await run(cfg, rpc("tools/call", { name: "touch" }));
     expect(records).toEqual([{ ok: true, touched: "member-42" }]);
   });
 
@@ -173,7 +165,7 @@ describe("dispatchMcp", () => {
       }),
     });
     const result = await body(
-      await dispatchMcp(cfg, caller, rpc("tools/call", { name: "boom" })),
+      await run(cfg, rpc("tools/call", { name: "boom" })),
     );
     const payload = result.result as Record<string, unknown>;
     expect(payload.isError).toBe(true);
@@ -185,21 +177,15 @@ describe("dispatchMcp", () => {
 
   test("prompts and resources are refused when not configured", async () => {
     const promptResult = await body(
-      await dispatchMcp(
-        baseConfig(),
-        caller,
-        rpc("prompts/get", { name: "x" }),
-      ),
+      await run(baseConfig(), rpc("prompts/get", { name: "x" })),
     );
     expect((promptResult.error as Record<string, unknown>).code).toBe(-32601);
-    const list = await body(
-      await dispatchMcp(baseConfig(), caller, rpc("resources/list")),
-    );
+    const list = await body(await run(baseConfig(), rpc("resources/list")));
     expect((list.result as Record<string, unknown>).resources).toEqual([]);
   });
 
   test("a notification (no id) gets a bare 202 with no body", async () => {
-    const response = await dispatchMcp(baseConfig(), caller, {
+    const response = await run(baseConfig(), {
       jsonrpc: "2.0",
       method: "notifications/initialized",
     });
@@ -208,10 +194,108 @@ describe("dispatchMcp", () => {
   });
 
   test("unknown method returns method-not-found", async () => {
-    const result = await body(
-      await dispatchMcp(baseConfig(), caller, rpc("does/not/exist")),
-    );
+    const result = await body(await run(baseConfig(), rpc("does/not/exist")));
     expect((result.error as Record<string, unknown>).code).toBe(-32601);
+  });
+});
+
+describe("per-tool scope gating", () => {
+  const cfg = baseConfig({
+    tools: () => ({
+      admin_wipe: {
+        description: "scoped",
+        handler: () => "wiped",
+        inputSchema: { type: "object" },
+        scope: "admin",
+      },
+      read_status: {
+        description: "open",
+        handler: () => "ok",
+        inputSchema: { type: "object" },
+      },
+    }),
+  });
+
+  test("tools/list hides scoped tools the caller can't reach", async () => {
+    const withoutScope = await body(await run(cfg, rpc("tools/list"), []));
+    const names = (
+      (withoutScope.result as Record<string, unknown>).tools as {
+        name: string;
+      }[]
+    ).map((tool) => tool.name);
+    expect(names).toEqual(["read_status"]);
+
+    const withScope = await body(await run(cfg, rpc("tools/list"), ["admin"]));
+    const scopedNames = (
+      (withScope.result as Record<string, unknown>).tools as { name: string }[]
+    ).map((tool) => tool.name);
+    expect(scopedNames.sort()).toEqual(["admin_wipe", "read_status"]);
+  });
+
+  test("tools/call on a hidden scoped tool reports it as unknown", async () => {
+    const denied = await body(
+      await run(cfg, rpc("tools/call", { name: "admin_wipe" }), []),
+    );
+    expect((denied.error as Record<string, unknown>).message).toContain(
+      "Unknown tool",
+    );
+
+    const allowed = await body(
+      await run(cfg, rpc("tools/call", { name: "admin_wipe" }), ["admin"]),
+    );
+    expect((allowed.result as Record<string, unknown>).isError).toBe(false);
+  });
+});
+
+describe("rich tool results", () => {
+  test("a content array is passed through verbatim", async () => {
+    const cfg = baseConfig({
+      tools: () => ({
+        shot: {
+          description: "image",
+          handler: () => [
+            { data: "abc", mimeType: "image/png", type: "image" },
+          ],
+          inputSchema: { type: "object" },
+        },
+      }),
+    });
+    const result = await body(
+      await run(cfg, rpc("tools/call", { name: "shot" })),
+    );
+    const payload = result.result as Record<string, unknown>;
+    expect(payload.isError).toBe(false);
+    expect((payload.content as { type: string }[])[0]?.type).toBe("image");
+  });
+
+  test("a full result object carries structuredContent and isError through", async () => {
+    const cfg = baseConfig({
+      tools: () => ({
+        data: {
+          description: "structured",
+          handler: () => ({
+            content: [{ text: "see structured", type: "text" as const }],
+            structuredContent: { count: 3 },
+          }),
+          inputSchema: { type: "object" },
+          outputSchema: { type: "object" },
+        },
+      }),
+    });
+    const list = await body(await run(cfg, rpc("tools/list")));
+    expect(
+      (
+        (list.result as Record<string, unknown>).tools as {
+          outputSchema: unknown;
+        }[]
+      )[0]?.outputSchema,
+    ).toEqual({ type: "object" });
+    const call = await body(
+      await run(cfg, rpc("tools/call", { name: "data" })),
+    );
+    const payload = call.result as Record<string, unknown>;
+    expect(payload.structuredContent).toEqual({ count: 3 });
+    expect(payload.isError).toBe(false);
   });
 });
 

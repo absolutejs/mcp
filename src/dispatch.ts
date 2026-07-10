@@ -1,7 +1,7 @@
 // The MCP method dispatcher. Pure and framework-free: given the server config,
-// a resolved caller, and one decoded JSON-RPC message, it produces the Response.
-// Capabilities advertised on `initialize` are derived from what the config
-// actually provides (prompts/resources are optional).
+// a resolved caller, its scopes, and one decoded JSON-RPC message, it produces
+// the Response. Capabilities advertised on `initialize` are derived from what
+// the config actually provides (prompts/resources are optional).
 
 import { isRecord } from "./guards";
 import {
@@ -14,7 +14,13 @@ import {
   rpcResult,
   type JsonRpcId,
 } from "./jsonrpc";
-import type { McpCallMeta, McpServerConfig } from "./types";
+import type {
+  McpCallMeta,
+  McpServerConfig,
+  McpTool,
+  McpToolResult,
+  McpToolReturn,
+} from "./types";
 
 const DEFAULT_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const DEFAULT_RESOURCE_MIME = "text/markdown";
@@ -32,6 +38,22 @@ const negotiateProtocol = (supported: string[], params: unknown) => {
       : preferred;
 
   return supported.includes(requested) ? requested : preferred;
+};
+
+/** A tool with no `scope` is always available; a scoped tool needs the caller
+ *  to hold that scope. Fails closed — unknown scopes hide a scoped tool. */
+const scopeAllows = (tool: McpTool, scopes: string[]) =>
+  tool.scope === undefined || scopes.includes(tool.scope);
+
+/** A handler may return a bare string, a content array, or a full result.
+ *  Normalise to the wire shape so every path produces valid `tools/call` output. */
+const normalizeResult = (value: McpToolReturn): McpToolResult => {
+  if (typeof value === "string") {
+    return { content: [{ text: value, type: "text" }], isError: false };
+  }
+  if (Array.isArray(value)) return { content: value, isError: false };
+
+  return { isError: false, ...value };
 };
 
 const initialize = <Caller>(
@@ -61,17 +83,23 @@ const initialize = <Caller>(
 const toolsList = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
+  scopes: string[],
   id: JsonRpcId,
 ) => {
   const tools = await config.tools({ caller, meta: {} });
 
   return rpcResult(id, {
-    tools: Object.entries(tools).map(([name, tool]) => ({
-      annotations: tool.annotations,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      name,
-    })),
+    tools: Object.entries(tools)
+      .filter(([, tool]) => scopeAllows(tool, scopes))
+      .map(([name, tool]) => ({
+        annotations: tool.annotations,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        name,
+        ...(tool.outputSchema === undefined
+          ? {}
+          : { outputSchema: tool.outputSchema }),
+      })),
   });
 };
 
@@ -81,6 +109,7 @@ const errorResult = (id: JsonRpcId, text: string) =>
 const toolsCall = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
+  scopes: string[],
   id: JsonRpcId,
   params: unknown,
 ) => {
@@ -96,17 +125,17 @@ const toolsCall = async <Caller>(
   }
   const tools = await config.tools({ caller, meta });
   const tool = tools[name];
-  if (!tool)
+  // Scope-gated tools that the caller can't see are reported as unknown, so a
+  // hidden tool is indistinguishable from one that doesn't exist.
+  if (!tool || !scopeAllows(tool, scopes)) {
     return rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown tool: ${name}`);
+  }
   let ok = false;
   let response: Response;
   try {
-    const text = await tool.handler(args);
-    ok = true;
-    response = rpcResult(id, {
-      content: [{ text, type: "text" }],
-      isError: false,
-    });
+    const result = normalizeResult(await tool.handler(args));
+    ok = result.isError !== true;
+    response = rpcResult(id, result);
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown error";
     response = errorResult(id, `Tool failed: ${detail}`);
@@ -198,11 +227,13 @@ const resourcesRead = async <Caller>(
   });
 };
 
-/** Route one decoded JSON-RPC message to its handler. Notifications (no `id`)
- *  get a bare 202. Unknown methods get JSON-RPC method-not-found. */
+/** Route one decoded JSON-RPC message to its handler. `scopes` are the caller's
+ *  granted scopes (from `authorize`); they gate scope-restricted tools.
+ *  Notifications (no `id`) get a bare 202; unknown methods get method-not-found. */
 export const dispatchMcp = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
+  scopes: string[],
   message: unknown,
 ): Promise<Response> => {
   if (!isRecord(message) || message.jsonrpc !== "2.0") {
@@ -218,8 +249,10 @@ export const dispatchMcp = async <Caller>(
   const { params } = message;
   if (method === "initialize") return initialize(config, id, params);
   if (method === "ping") return rpcResult(id, {});
-  if (method === "tools/list") return toolsList(config, caller, id);
-  if (method === "tools/call") return toolsCall(config, caller, id, params);
+  if (method === "tools/list") return toolsList(config, caller, scopes, id);
+  if (method === "tools/call") {
+    return toolsCall(config, caller, scopes, id, params);
+  }
   if (method === "prompts/list") return promptsList(config, id);
   if (method === "prompts/get") return promptsGet(config, caller, id, params);
   if (method === "resources/list") return resourcesList(config, caller, id);
