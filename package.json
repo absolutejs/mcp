@@ -1,0 +1,41 @@
+{
+  "author": "Alex Kahn",
+  "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry — OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "elysia": "^1.1.0",
+    "prettier": "3.5.3",
+    "typescript": "5.8.3"
+  },
+  "peerDependencies": {
+    "elysia": ">=1.1.0"
+  },
+  "license": "BUSL-1.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "name": "@absolutejs/mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/absolutejs/mcp.git"
+  },
+  "homepage": "https://github.com/absolutejs/mcp",
+  "bugs": {
+    "url": "https://github.com/absolutejs/mcp/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && bun build src/index.ts --outdir dist --target=bun --external elysia && tsc --emitDeclarationOnly --project tsconfig.json",
+    "format": "prettier --write \"./**/*.{ts,json,md}\"",
+    "release": "bun run format && bun run test && bun run build && bun publish",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
+  "types": "./dist/src/index.d.ts",
+  "version": "0.0.1"
+}
