@@ -188,25 +188,49 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
     return (isRecord(result) ? result : {}) as McpInitializeResult;
   };
 
-  const listTools = async () => {
-    const result = await rpc("tools/list");
-    const tools =
-      isRecord(result) && Array.isArray(result.tools) ? result.tools : [];
+  // Paginated servers return nextCursor; follow it so callers always get the
+  // complete list. Page cap guards against a server that loops its cursors.
+  const MAX_LIST_PAGES = 40;
 
-    return tools.filter(isRecord).map(
-      (tool): McpRemoteTool => ({
-        annotations: isRecord(tool.annotations)
-          ? (tool.annotations as McpToolAnnotations)
-          : undefined,
-        description:
-          typeof tool.description === "string" ? tool.description : undefined,
-        inputSchema: isRecord(tool.inputSchema) ? tool.inputSchema : undefined,
-        name: typeof tool.name === "string" ? tool.name : "",
-        outputSchema: isRecord(tool.outputSchema)
-          ? tool.outputSchema
-          : undefined,
-      }),
-    );
+  const listTools = async () => {
+    const collected: McpRemoteTool[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
+      const result = await rpc(
+        "tools/list",
+        cursor === undefined ? undefined : { cursor },
+      );
+      const tools =
+        isRecord(result) && Array.isArray(result.tools) ? result.tools : [];
+      collected.push(
+        ...tools.filter(isRecord).map(
+          (tool): McpRemoteTool => ({
+            annotations: isRecord(tool.annotations)
+              ? (tool.annotations as McpToolAnnotations)
+              : undefined,
+            description:
+              typeof tool.description === "string"
+                ? tool.description
+                : undefined,
+            inputSchema: isRecord(tool.inputSchema)
+              ? tool.inputSchema
+              : undefined,
+            name: typeof tool.name === "string" ? tool.name : "",
+            outputSchema: isRecord(tool.outputSchema)
+              ? tool.outputSchema
+              : undefined,
+          }),
+        ),
+      );
+      const next =
+        isRecord(result) && typeof result.nextCursor === "string"
+          ? result.nextCursor
+          : undefined;
+      if (next === undefined) break;
+      cursor = next;
+    }
+
+    return collected;
   };
 
   const callTool = async (name: string, args?: unknown) => {
@@ -219,11 +243,25 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
   };
 
   const listResources = async () => {
-    const result = await rpc("resources/list");
+    const collected: unknown[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
+      const result = await rpc(
+        "resources/list",
+        cursor === undefined ? undefined : { cursor },
+      );
+      if (isRecord(result) && Array.isArray(result.resources)) {
+        collected.push(...result.resources);
+      }
+      const next =
+        isRecord(result) && typeof result.nextCursor === "string"
+          ? result.nextCursor
+          : undefined;
+      if (next === undefined) break;
+      cursor = next;
+    }
 
-    return isRecord(result) && Array.isArray(result.resources)
-      ? result.resources
-      : [];
+    return collected;
   };
 
   const readResource = async (uri: string) => rpc("resources/read", { uri });

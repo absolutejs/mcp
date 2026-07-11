@@ -24,6 +24,35 @@ import type {
 
 const DEFAULT_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const DEFAULT_RESOURCE_MIME = "text/markdown";
+const DEFAULT_LIST_PAGE_SIZE = 50;
+
+/** Opaque list cursor (base64 offset). A malformed/foreign cursor reads as
+ *  page zero rather than erroring — the spec treats cursors as opaque. */
+const decodeCursor = (params: unknown) => {
+  if (!isRecord(params) || typeof params.cursor !== "string") return 0;
+  try {
+    const parsed = Number.parseInt(atob(params.cursor), 10);
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const encodeCursor = (offset: number) => btoa(String(offset));
+
+/** One page of a list + the nextCursor when more remain. */
+const paginate = <Item>(items: Item[], offset: number, pageSize: number) => {
+  const page = items.slice(offset, offset + pageSize);
+  const nextOffset = offset + pageSize;
+
+  return {
+    items: page,
+    ...(nextOffset < items.length
+      ? { nextCursor: encodeCursor(nextOffset) }
+      : {}),
+  };
+};
 
 const idOf = (message: Record<string, unknown>): JsonRpcId =>
   typeof message.id === "string" || typeof message.id === "number"
@@ -85,21 +114,29 @@ const toolsList = async <Caller>(
   caller: Caller,
   scopes: string[],
   id: JsonRpcId,
+  params: unknown,
 ) => {
   const tools = await config.tools({ caller, meta: {} });
+  const visible = Object.entries(tools)
+    .filter(([, tool]) => scopeAllows(tool, scopes))
+    .map(([name, tool]) => ({
+      annotations: tool.annotations,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      name,
+      ...(tool.outputSchema === undefined
+        ? {}
+        : { outputSchema: tool.outputSchema }),
+    }));
+  const { items, nextCursor } = paginate(
+    visible,
+    decodeCursor(params),
+    config.listPageSize ?? DEFAULT_LIST_PAGE_SIZE,
+  );
 
   return rpcResult(id, {
-    tools: Object.entries(tools)
-      .filter(([, tool]) => scopeAllows(tool, scopes))
-      .map(([name, tool]) => ({
-        annotations: tool.annotations,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        name,
-        ...(tool.outputSchema === undefined
-          ? {}
-          : { outputSchema: tool.outputSchema }),
-      })),
+    tools: items,
+    ...(nextCursor === undefined ? {} : { nextCursor }),
   });
 };
 
@@ -148,16 +185,24 @@ const toolsCall = async <Caller>(
 const promptsList = <Caller>(
   config: McpServerConfig<Caller>,
   id: JsonRpcId,
+  params: unknown,
 ) => {
   const definitions = config.prompts?.definitions ?? {};
+  const all = Object.entries(definitions).map(([name, def]) => ({
+    arguments: def.arguments ?? [],
+    description: def.description,
+    name,
+    title: def.title,
+  }));
+  const { items, nextCursor } = paginate(
+    all,
+    decodeCursor(params),
+    config.listPageSize ?? DEFAULT_LIST_PAGE_SIZE,
+  );
 
   return rpcResult(id, {
-    prompts: Object.entries(definitions).map(([name, def]) => ({
-      arguments: def.arguments ?? [],
-      description: def.description,
-      name,
-      title: def.title,
-    })),
+    prompts: items,
+    ...(nextCursor === undefined ? {} : { nextCursor }),
   });
 };
 
@@ -196,11 +241,20 @@ const resourcesList = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
   id: JsonRpcId,
+  params: unknown,
 ) => {
   const resources = config.resources;
   if (!resources) return rpcResult(id, { resources: [] });
+  const { items, nextCursor } = paginate(
+    await resources.list({ caller }),
+    decodeCursor(params),
+    config.listPageSize ?? DEFAULT_LIST_PAGE_SIZE,
+  );
 
-  return rpcResult(id, { resources: await resources.list({ caller }) });
+  return rpcResult(id, {
+    resources: items,
+    ...(nextCursor === undefined ? {} : { nextCursor }),
+  });
 };
 
 const resourcesRead = async <Caller>(
@@ -249,13 +303,17 @@ export const dispatchMcp = async <Caller>(
   const { params } = message;
   if (method === "initialize") return initialize(config, id, params);
   if (method === "ping") return rpcResult(id, {});
-  if (method === "tools/list") return toolsList(config, caller, scopes, id);
+  if (method === "tools/list") {
+    return toolsList(config, caller, scopes, id, params);
+  }
   if (method === "tools/call") {
     return toolsCall(config, caller, scopes, id, params);
   }
-  if (method === "prompts/list") return promptsList(config, id);
+  if (method === "prompts/list") return promptsList(config, id, params);
   if (method === "prompts/get") return promptsGet(config, caller, id, params);
-  if (method === "resources/list") return resourcesList(config, caller, id);
+  if (method === "resources/list") {
+    return resourcesList(config, caller, id, params);
+  }
   if (method === "resources/read") {
     return resourcesRead(config, caller, id, params);
   }

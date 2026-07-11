@@ -145,6 +145,8 @@ export type McpServerConfig<Caller> = {
   instructions?: string;
   /** The token issuer — used for discovery metadata and the challenge URL. */
   issuer: string;
+  /** Page size for tools/prompts/resources list pagination (default 50). */
+  listPageSize?: number;
   /** Fired after every `tools/call` for auditing. `meta` carries anything the
    *  tool handler wrote during the call. */
   onCall?: (record: {
