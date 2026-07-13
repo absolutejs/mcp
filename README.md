@@ -177,11 +177,40 @@ spec also forbids eliciting **sensitive information**.
 **The trade-off, stated plainly.** Elicitation is the one MCP feature a
 stateless server cannot do: the question goes out on the SSE stream of an
 in-flight `tools/call`, and the client answers on a _separate_ HTTP POST. Two
-requests have to meet, so the pending call is remembered in-process and the
-endpoint becomes **session-stateful** (`Mcp-Session-Id`). Run one instance, or
-pin sessions. Leave `elicitation` off — the default — and nothing changes: the
-server stays stateless, `tools/call` keeps answering with a plain JSON body, and
-only tools marked `mayElicit` ever stream.
+requests have to meet, so the endpoint becomes **session-stateful**
+(`Mcp-Session-Id`). Leave `elicitation` off — the default — and nothing changes:
+the server stays stateless, `tools/call` keeps answering with a plain JSON body,
+and only tools marked `mayElicit` ever stream.
+
+**Running more than one instance.** Behind one server the defaults handle it.
+Behind several, two different things break, and each has a seam:
+
+```ts
+elicitation: {
+  enabled: true,
+  // (1) The client initializes on A and calls a tool on B, which has never
+  //     heard of the session. Put session state where every instance sees it.
+  //     It is an id and a boolean — nothing sensitive, nothing large.
+  store: {
+    create: ({ canElicit }) => db.insertSession(canElicit), // → id
+    get: (id) => db.findSession(id),                        // → { canElicit } | null
+    drop: (id) => db.deleteSession(id),
+  },
+  // (2) The tool call and its question live on ONE instance, but the user's
+  //     answer POST can land on any of them. A promise cannot move, so route
+  //     the answer to the instance that is waiting — over whatever fan-out you
+  //     already run (Postgres LISTEN/NOTIFY, Redis, …).
+  bus: {
+    publish: (answer) => notify("mcp_elicit", answer),
+    subscribe: (handler) => listen("mcp_elicit", handler),
+  },
+}
+```
+
+Supply neither and run a single instance (or pin sessions). Supply both and
+elicitation is safe behind a load balancer with **no sticky routing** — there is
+a test for exactly that: instance A asks, the answer lands on B, the bus carries
+it back, and A's call finishes.
 
 Consuming a server that elicits? Pass `onElicit` to `createMcpClient` — that is
 what declares the capability, and what the package uses to answer. Omit it and

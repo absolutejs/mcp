@@ -71,6 +71,35 @@ export type McpElicitResult =
   | { action: "decline" }
   | { action: "unsupported" };
 
+/** The client's answer, on its way back to whichever instance is waiting. */
+export type McpElicitAnswer = {
+  requestId: string;
+  result: McpElicitResult;
+  sessionId: string | null;
+};
+
+/** Where session state lives. The default is in-memory (one instance). Put it
+ *  in your database and any instance can serve any session. Nothing here is
+ *  sensitive or large — an id and a capability flag. */
+export type McpSessionStore = {
+  create: (session: { canElicit: boolean }) => Promise<string> | string;
+  drop: (id: string) => Promise<void> | void;
+  get: (
+    id: string,
+  ) => Promise<{ canElicit: boolean } | null> | { canElicit: boolean } | null;
+};
+
+/** How an answer reaches the instance that asked the question. The tool call
+ *  and its pending promise live on ONE process; the client's answer POST can
+ *  land on any of them. Wire this to whatever fan-out you already run
+ *  (Postgres LISTEN/NOTIFY, Redis, …) and elicitation works with no sticky
+ *  routing. Omit it and you must run a single instance (or pin sessions). */
+export type McpElicitBus = {
+  /** An answer nobody here was waiting for — someone else might be. */
+  publish: (answer: McpElicitAnswer) => void;
+  subscribe: (handler: (answer: McpElicitAnswer) => void) => void;
+};
+
 /** Passed to a tool handler as its second argument. Ignore it and nothing
  *  changes — every existing handler keeps working. */
 export type McpToolCallContext = {
@@ -191,7 +220,16 @@ export type McpServerConfig<Caller> = {
    *  client answers on a separate HTTP request, so the pending call has to be
    *  remembered in-process. Run one instance, or pin `Mcp-Session-Id`. Tools
    *  must also opt in with `mayElicit`. */
-  elicitation?: { enabled: true; timeoutMs?: number };
+  elicitation?: {
+    /** Route answers to the instance that asked. Required to run more than one
+     *  instance without sticky sessions. */
+    bus?: McpElicitBus;
+    enabled: true;
+    /** Shared session state. Required to run more than one instance. */
+    store?: McpSessionStore;
+    /** How long a question waits for a human before it gives up (default 2m). */
+    timeoutMs?: number;
+  };
   /** Page size for tools/prompts/resources list pagination (default 50). */
   listPageSize?: number;
   /** Fired after every `tools/call` for auditing. `meta` carries anything the

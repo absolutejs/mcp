@@ -104,7 +104,7 @@ const clientCanElicit = (params: unknown) => {
   return isRecord(params.capabilities.elicitation);
 };
 
-const initialize = <Caller>(
+const initialize = async <Caller>(
   config: McpServerConfig<Caller>,
   id: JsonRpcId,
   params: unknown,
@@ -132,7 +132,7 @@ const initialize = <Caller>(
   // elicitation find the call that is waiting for it. No elicitation, no
   // session, no state.
   if (!config.elicitation?.enabled || !context.sessions) return response;
-  const sessionId = context.sessions.create(clientCanElicit(params));
+  const sessionId = await context.sessions.create(clientCanElicit(params));
   response.headers.set("Mcp-Session-Id", sessionId);
 
   return response;
@@ -235,7 +235,6 @@ const toolsCallStreaming = <Caller>(
   meta: McpCallMeta,
   tool: McpTool,
   sessions: SessionRegistry,
-  sessionId: string,
   canElicit: boolean,
 ) => {
   const encoder = new TextEncoder();
@@ -254,8 +253,7 @@ const toolsCallStreaming = <Caller>(
         canElicit,
         elicit: async (request) => {
           if (!canElicit) return { action: "unsupported" };
-          const pending = sessions.startElicit(sessionId, request);
-          if (!pending.id) return { action: "cancel" };
+          const pending = sessions.startElicit(request);
           send({
             id: pending.id,
             jsonrpc: "2.0",
@@ -316,15 +314,19 @@ const toolsCall = async <Caller>(
     return rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown tool: ${name}`);
   }
 
-  const session = context.sessions?.get(context.sessionId ?? null);
-  const streaming =
+  // A tool that may ask the user something answers over SSE — but only when
+  // there IS a session to hang the question on. Otherwise it runs normally with
+  // canElicit false, which every eliciting tool has to handle anyway.
+  const sessions = context.sessions;
+  const session = sessions
+    ? await sessions.get(context.sessionId ?? null)
+    : null;
+  if (
     tool.mayElicit === true &&
     config.elicitation?.enabled === true &&
-    context.sessions !== undefined &&
-    session !== null &&
-    session !== undefined &&
-    typeof context.sessionId === "string";
-  if (streaming && context.sessions && typeof context.sessionId === "string") {
+    sessions &&
+    session
+  ) {
     return toolsCallStreaming(
       config,
       caller,
@@ -333,9 +335,8 @@ const toolsCall = async <Caller>(
       args,
       meta,
       tool,
-      context.sessions,
-      context.sessionId,
-      session?.canElicit === true,
+      sessions,
+      session.canElicit,
     );
   }
 
@@ -475,7 +476,14 @@ const elicitAnswer = (
       : action === "decline"
         ? { action: "decline" }
         : { action: "cancel" };
-  context.sessions.resolveElicit(context.sessionId ?? null, requestId, answer);
+  // Resolves the waiting call if it's ours; otherwise the registry puts it on
+  // the bus so the instance that ASKED can resolve it. Either way the client
+  // gets its 202 — an answer we can't place is not the client's problem.
+  context.sessions.resolveElicit({
+    requestId,
+    result: answer,
+    sessionId: context.sessionId ?? null,
+  });
 
   return notificationAck();
 };
@@ -501,7 +509,7 @@ export const dispatchMcp = async <Caller>(
   const method = typeof message.method === "string" ? message.method : "";
   const { params } = message;
   if (method === "initialize") {
-    return initialize(config, id, params, context);
+    return await initialize(config, id, params, context);
   }
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") {

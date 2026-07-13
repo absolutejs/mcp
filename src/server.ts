@@ -7,6 +7,7 @@
 import { Elysia } from "elysia";
 import {
   metadataResponse,
+  primeMcpSessions,
   ROOT_METADATA_PATH,
   runMcpDelete,
   runMcpPost,
@@ -27,6 +28,8 @@ import type { McpServerConfig } from "./types";
  *     `serveRootMetadata` is set (only one endpoint per app should). */
 export const mcpServer = <Caller>(config: McpServerConfig<Caller>) => {
   const metadataPath = metadataPathFor(config.path);
+  // Subscribe to the elicitation bus at mount time, not on the first request.
+  primeMcpSessions(config);
 
   const base = new Elysia()
     .get(metadataPath, () => metadataResponse(config))

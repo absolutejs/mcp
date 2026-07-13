@@ -4,15 +4,33 @@
 // sends `elicitation/create` down the SSE stream of an in-flight `tools/call`,
 // and the client answers it in a SEPARATE HTTP POST (spec: "the body of the
 // POST request MUST be a single JSON-RPC request, notification, or response").
-// Two different HTTP requests have to meet, so something has to remember the
-// promise between them — that's this.
+// Two different HTTP requests have to meet.
 //
-// CONSEQUENCE, stated plainly: an endpoint with elicitation enabled is no
-// longer horizontally stateless. The pending promise lives in ONE process, so
-// the client's answer must reach the same process — run a single instance, or
-// pin sessions (sticky routing on `Mcp-Session-Id`). Everything else in this
-// package stays stateless; if you never enable elicitation you never pay this.
-import type { McpElicitResult, McpElicitationRequest } from "./types";
+// Behind ONE server that's just a Map. Behind N servers, two things break, and
+// they break differently:
+//
+//   1. The session itself. The client initializes on instance A and calls a
+//      tool on instance B, which has never heard of the session. Fixed by a
+//      shared `store` (put it in your database) — session state is tiny and
+//      boring: an id and whether the client can elicit.
+//
+//   2. The pending answer. The tool call and its question live on ONE instance
+//      — whichever is running it — but the client's answer POST may land on any
+//      of them. A promise cannot be shared, so the answer has to be ROUTED to
+//      the instance that's waiting. Fixed by a `bus` (Postgres LISTEN/NOTIFY,
+//      Redis, whatever you already have): an answer nobody local was waiting
+//      for gets published, and every other instance tries to resolve it.
+//
+// Supply neither and you get the in-memory single-instance behaviour, which is
+// correct and enough for most servers. Supply both and elicitation is safe
+// behind a load balancer with no sticky routing.
+import type {
+  McpElicitAnswer,
+  McpElicitBus,
+  McpElicitResult,
+  McpElicitationRequest,
+  McpSessionStore,
+} from "./types";
 
 const DEFAULT_SESSION_TTL_MS = 3_600_000;
 const DEFAULT_ELICIT_TIMEOUT_MS = 120_000;
@@ -23,109 +41,104 @@ type Pending = {
   timer: ReturnType<typeof setTimeout>;
 };
 
-type Session = {
-  /** The client declared the `elicitation` capability at initialize. */
-  canElicit: boolean;
-  lastSeen: number;
-  /** In-flight elicitations, keyed by the JSON-RPC id we sent. */
-  pending: Map<string, Pending>;
-};
-
 export type SessionRegistry = ReturnType<typeof createSessionRegistry>;
 
-export const createSessionRegistry = (options?: {
-  elicitTimeoutMs?: number;
-  ttlMs?: number;
-}) => {
-  const ttlMs = options?.ttlMs ?? DEFAULT_SESSION_TTL_MS;
-  const elicitTimeoutMs = options?.elicitTimeoutMs ?? DEFAULT_ELICIT_TIMEOUT_MS;
-  const sessions = new Map<string, Session>();
+/** In-memory session store — the default, and the right one for a single
+ *  instance. Swap it for a DB-backed one to run several. */
+const createMemoryStore = (ttlMs: number): McpSessionStore => {
+  const sessions = new Map<string, { canElicit: boolean; lastSeen: number }>();
   let sinceSweep = 0;
 
-  // Idle sessions are dropped opportunistically — no timer, so a server with no
-  // traffic isn't kept alive by this.
   const sweep = () => {
     sinceSweep += 1;
     if (sinceSweep < SWEEP_EVERY) return;
     sinceSweep = 0;
     const cutoff = Date.now() - ttlMs;
     sessions.forEach((session, id) => {
-      if (session.lastSeen >= cutoff) return;
-      session.pending.forEach((pending) => {
-        clearTimeout(pending.timer);
-        pending.resolve({ action: "cancel" });
-      });
-      sessions.delete(id);
+      if (session.lastSeen < cutoff) sessions.delete(id);
     });
   };
 
-  const touch = (id: string | null) => {
-    if (!id) return null;
-    const session = sessions.get(id);
-    if (!session) return null;
-    session.lastSeen = Date.now();
-
-    return session;
-  };
-
   return {
-    /** A new session, returned to the client as `Mcp-Session-Id`. */
-    create: (canElicit: boolean) => {
+    create: (session) => {
       sweep();
       const id = crypto.randomUUID();
-      sessions.set(id, { canElicit, lastSeen: Date.now(), pending: new Map() });
+      sessions.set(id, { canElicit: session.canElicit, lastSeen: Date.now() });
 
       return id;
     },
-
-    drop: (id: string) => {
-      const session = sessions.get(id);
-      session?.pending.forEach((pending) => {
-        clearTimeout(pending.timer);
-        pending.resolve({ action: "cancel" });
-      });
+    drop: (id) => {
       sessions.delete(id);
     },
+    get: (id) => {
+      const session = sessions.get(id);
+      if (!session) return null;
+      session.lastSeen = Date.now();
 
-    get: (id: string | null) => touch(id),
+      return { canElicit: session.canElicit };
+    },
+  };
+};
 
-    /** The client answered one of our elicitation requests. Returns false when
-     *  the id is unknown (a stale answer, or a foreign session) — the caller
-     *  should still 202 it, per the transport rules. */
-    resolveElicit: (
-      sessionId: string | null,
-      requestId: string,
-      result: McpElicitResult,
-    ) => {
-      const session = touch(sessionId);
-      const pending = session?.pending.get(requestId);
-      if (!session || !pending) return false;
-      clearTimeout(pending.timer);
-      session.pending.delete(requestId);
-      pending.resolve(result);
+export const createSessionRegistry = (options?: {
+  bus?: McpElicitBus;
+  elicitTimeoutMs?: number;
+  store?: McpSessionStore;
+  ttlMs?: number;
+}) => {
+  const ttlMs = options?.ttlMs ?? DEFAULT_SESSION_TTL_MS;
+  const elicitTimeoutMs = options?.elicitTimeoutMs ?? DEFAULT_ELICIT_TIMEOUT_MS;
+  const store = options?.store ?? createMemoryStore(ttlMs);
+  // Promises can't cross a process boundary, so this stays local no matter what
+  // the store does. The bus is what carries an answer TO it.
+  const pending = new Map<string, Pending>();
 
-      return true;
+  /** Hand an answer to the call waiting for it, if that call is ours. */
+  const resolveLocal = (answer: McpElicitAnswer) => {
+    const waiting = pending.get(answer.requestId);
+    if (!waiting) return false;
+    clearTimeout(waiting.timer);
+    pending.delete(answer.requestId);
+    waiting.resolve(answer.result);
+
+    return true;
+  };
+
+  // An answer another instance couldn't place — it may be ours.
+  options?.bus?.subscribe((answer) => {
+    resolveLocal(answer);
+  });
+
+  return {
+    create: async (canElicit: boolean) => await store.create({ canElicit }),
+
+    drop: async (id: string) => {
+      await store.drop(id);
     },
 
-    /** Register an outbound elicitation and get back the id to send with it,
-     *  plus the promise that settles when the client answers (or gives up). */
-    startElicit: (sessionId: string, request: McpElicitationRequest) => {
-      const session = sessions.get(sessionId);
-      if (!session) {
-        return {
-          answer: Promise.resolve<McpElicitResult>({ action: "cancel" }),
-          id: "",
-          request,
-        };
-      }
+    get: async (id: string | null) => (id ? await store.get(id) : null),
+
+    /** The client answered. If the call that asked is running HERE, resolve it.
+     *  If not, put the answer on the bus so the instance that is waiting can —
+     *  the answer must find the promise, and the promise cannot move. */
+    resolveElicit: (answer: McpElicitAnswer) => {
+      if (resolveLocal(answer)) return true;
+      options?.bus?.publish(answer);
+
+      return false;
+    },
+
+    /** Register an outbound question. Returns the id to send it under and the
+     *  promise that settles when the user answers — or when they never do. */
+    startElicit: (request: McpElicitationRequest) => {
       const id = `elicit_${crypto.randomUUID()}`;
       const answer = new Promise<McpElicitResult>((resolve) => {
-        // A user who never answers must not hang the tool call forever.
+        // A user who walks away must not hold a tool call open forever.
         const timer = setTimeout(() => {
-          session.pending.delete(id);
+          pending.delete(id);
           resolve({ action: "cancel" });
         }, elicitTimeoutMs);
-        session.pending.set(id, { resolve, timer });
+        pending.set(id, { resolve, timer });
       });
 
       return { answer, id, request };

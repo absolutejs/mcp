@@ -29,12 +29,28 @@ const HTTP_NOT_FOUND = 404;
 // elicitation on never creates one.
 const registries = new WeakMap<object, SessionRegistry>();
 
+/** Build the session registry NOW rather than on the first request. The bus
+ *  subscription has to exist before any answer can arrive, and an instance that
+ *  has served no traffic yet is exactly the one a load balancer is about to
+ *  hand an answer to. */
+export const primeMcpSessions = <Caller>(config: McpServerConfig<Caller>) => {
+  registryFor(config);
+};
+
 const registryFor = <Caller>(config: McpServerConfig<Caller>) => {
   if (!config.elicitation?.enabled) return undefined;
   const existing = registries.get(config);
   if (existing) return existing;
   const created = createSessionRegistry({
-    elicitTimeoutMs: config.elicitation.timeoutMs,
+    ...(config.elicitation.bus === undefined
+      ? {}
+      : { bus: config.elicitation.bus }),
+    ...(config.elicitation.timeoutMs === undefined
+      ? {}
+      : { elicitTimeoutMs: config.elicitation.timeoutMs }),
+    ...(config.elicitation.store === undefined
+      ? {}
+      : { store: config.elicitation.store }),
   });
   registries.set(config, created);
 
@@ -78,9 +94,10 @@ export const runMcpPost = async <Caller>(
 
   const sessions = registryFor(config);
   const sessionId = request.headers.get("mcp-session-id");
-  // A session we don't know is a session we restarted out from under: 404 tells
-  // the client to re-initialize, which the spec requires it to handle.
-  if (sessions && sessionId && !sessions.get(sessionId)) {
+  // A session we don't know is one we restarted out from under (or, with a
+  // shared store, one that expired). 404 tells the client to re-initialize,
+  // which the spec requires it to handle.
+  if (sessions && sessionId && !(await sessions.get(sessionId))) {
     return new Response(null, { status: HTTP_NOT_FOUND });
   }
 
@@ -93,7 +110,7 @@ export const runMcpPost = async <Caller>(
 /** The client is done with its session and says so (spec: Session Management).
  *  Only meaningful when elicitation put us in a session at all — otherwise 405,
  *  which the spec explicitly allows for servers that don't do sessions. */
-export const runMcpDelete = <Caller>(
+export const runMcpDelete = async <Caller>(
   config: McpServerConfig<Caller>,
   request: Request,
 ) => {
@@ -102,7 +119,7 @@ export const runMcpDelete = <Caller>(
   if (!sessions || !sessionId) {
     return new Response(null, { status: HTTP_METHOD_NOT_ALLOWED });
   }
-  sessions.drop(sessionId);
+  await sessions.drop(sessionId);
 
   return new Response(null, { status: HTTP_NO_CONTENT });
 };

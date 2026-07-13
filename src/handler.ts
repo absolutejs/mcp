@@ -7,10 +7,14 @@
 //   const mcp = createMcpHandler(config);
 //   Bun.serve({ fetch: async (req) => (await mcp(req)) ?? new Response("Not found", { status: 404 }) });
 
-import { handleMcpRequest } from "./core";
+import { handleMcpRequest, primeMcpSessions } from "./core";
 import type { McpServerConfig } from "./types";
 
-export const createMcpHandler =
-  <Caller>(config: McpServerConfig<Caller>) =>
-  (request: Request): Promise<Response | null> =>
+export const createMcpHandler = <Caller>(config: McpServerConfig<Caller>) => {
+  // Subscribe to the elicitation bus (if any) NOW: an instance that has served
+  // no traffic is exactly the one about to be handed someone else's answer.
+  primeMcpSessions(config);
+
+  return (request: Request): Promise<Response | null> =>
     handleMcpRequest(config, request);
+};
