@@ -13,6 +13,14 @@
  * `scope` gating, and rich tool results (text/image/structured) are all
  * built in; the package ships no opinion about billing, storage, or access.
  *
+ * **Feedback.** A connected AI client gives a server no UI, so a user's "that
+ * was wrong" can only come back through the model. {@link feedbackTools} is the
+ * pair of tools that carries it (report_problem / submit_feedback), and
+ * {@link FEEDBACK_INSTRUCTIONS} is the sentence that makes a model actually use
+ * them instead of just apologising. {@link McpServerConfig.elicitation} goes
+ * further: a tool marked `mayElicit` can ASK the user a question mid-call
+ * (`elicitation/create`) and wait for the answer.
+ *
  * **Consume.** {@link createMcpClient} is a streamable-HTTP client for calling
  * OTHER MCP servers — the half you need to expose a user's own connected tools
  * to your agent. Safety wrapping around untrusted remote tools (namespacing,
@@ -38,7 +46,15 @@ export {
   type McpInitializeResult,
   type McpRemoteTool,
 } from "./client";
-export { dispatchMcp } from "./dispatch";
+export { dispatchMcp, type McpDispatchContext } from "./dispatch";
+export {
+  FEEDBACK_INSTRUCTIONS,
+  feedbackTools,
+  type McpFeedbackRating,
+  type McpFeedbackReport,
+  type McpFeedbackStore,
+  type McpProblemReport,
+} from "./feedback";
 export { createMcpHandler } from "./handler";
 export {
   metadataPathFor,
@@ -46,8 +62,11 @@ export {
   type ProtectedResourceMetadata,
 } from "./metadata";
 export { mcpServer } from "./server";
+export { createSessionRegistry, type SessionRegistry } from "./sessions";
 export type {
   McpAudioContent,
+  McpElicitationRequest,
+  McpElicitResult,
   McpAuthResult,
   McpCallGate,
   McpCallMeta,
@@ -64,6 +83,7 @@ export type {
   McpTextContent,
   McpTool,
   McpToolAnnotations,
+  McpToolCallContext,
   McpToolContext,
   McpToolRegistry,
   McpToolResult,

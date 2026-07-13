@@ -107,6 +107,86 @@ onCall: ({ meta, name, ok }) =>
   ledger.write({ tool: name, ok, member: meta.touched }),
 ```
 
+## Feedback: the channel a client can't give you
+
+A connected AI client renders no UI for your server. There is no button for the
+user to press, so when they say _"that was wrong"_ the only path back to you is
+the model relaying it. Every MCP server has this hole, and every one of them
+hand-rolls the same two tools.
+
+```ts
+import { feedbackTools, FEEDBACK_INSTRUCTIONS } from "@absolutejs/mcp";
+
+mcpServer<Caller>({
+  instructions: `${myInstructions} ${FEEDBACK_INSTRUCTIONS}`,
+  tools: ({ caller }) => ({
+    ...myTools(caller),
+    ...feedbackTools({
+      caller,
+      store: {
+        reportProblem: ({ caller, report }) => file(caller, report), // → "Filed as #42."
+        submitFeedback: ({ caller, feedback }) => record(caller, feedback),
+      },
+    }),
+  }),
+});
+```
+
+`FEEDBACK_INSTRUCTIONS` is the load-bearing half. Without it a model treats a
+complaint as something to apologise for, and the signal dies where it was
+spoken.
+
+## Elicitation: ask the user a question mid-call
+
+A tool that can't finish without something only the user knows can **ask them**
+(`elicitation/create`) and wait for the answer.
+
+```ts
+mcpServer<Caller>({
+  elicitation: { enabled: true },
+  tools: () => ({
+    book_table: {
+      description: "Book a table.",
+      inputSchema: { type: "object" },
+      mayElicit: true, // opt in: this tool may ask
+      handler: async (args, { canElicit, elicit }) => {
+        if (!canElicit) return "Tell me the party size and I'll book it.";
+        const answer = await elicit({
+          message: "How many people?",
+          requestedSchema: {
+            type: "object",
+            properties: { people: { type: "integer", minimum: 1 } },
+            required: ["people"],
+          },
+        });
+        if (answer.action !== "accept") return "No problem — cancelled.";
+        return `Booked for ${answer.content.people}.`;
+      },
+    },
+  }),
+});
+```
+
+`requestedSchema` is a **flat object of primitives** (string / number / integer
+/ boolean / enum) — the spec restricts it so any client can render a form. The
+answer is `accept` (with `content`), `decline` (they said no), `cancel` (they
+dismissed it), or `unsupported` (this client can't ask anyone — check
+`canElicit` and take another path). Never fabricate an answer for the user; the
+spec also forbids eliciting **sensitive information**.
+
+**The trade-off, stated plainly.** Elicitation is the one MCP feature a
+stateless server cannot do: the question goes out on the SSE stream of an
+in-flight `tools/call`, and the client answers on a _separate_ HTTP POST. Two
+requests have to meet, so the pending call is remembered in-process and the
+endpoint becomes **session-stateful** (`Mcp-Session-Id`). Run one instance, or
+pin sessions. Leave `elicitation` off — the default — and nothing changes: the
+server stays stateless, `tools/call` keeps answering with a plain JSON body, and
+only tools marked `mayElicit` ever stream.
+
+Consuming a server that elicits? Pass `onElicit` to `createMcpClient` — that is
+what declares the capability, and what the package uses to answer. Omit it and
+servers are told you cannot ask anyone.
+
 ## A second, stricter endpoint
 
 `mcpServer` is per-endpoint, so an admin console is the same call with a

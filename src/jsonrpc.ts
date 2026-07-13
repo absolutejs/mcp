@@ -8,6 +8,7 @@ export const JSONRPC_INVALID_PARAMS = -32602;
 export const JSONRPC_INTERNAL_ERROR = -32603;
 
 export const HTTP_ACCEPTED = 202;
+export const HTTP_NO_CONTENT = 204;
 export const HTTP_UNAUTHORIZED = 401;
 export const HTTP_METHOD_NOT_ALLOWED = 405;
 

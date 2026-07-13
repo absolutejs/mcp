@@ -6,7 +6,12 @@
 // injection defense, approval gating — is the host's responsibility around it.
 
 import { isRecord } from "./guards";
-import type { McpToolAnnotations, McpToolResult } from "./types";
+import type {
+  McpElicitationRequest,
+  McpElicitResult,
+  McpToolAnnotations,
+  McpToolResult,
+} from "./types";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_PROTOCOL = "2025-06-18";
@@ -28,6 +33,14 @@ export class McpClientError extends Error {
 
 export type McpClientOptions = {
   clientInfo?: { name: string; version: string };
+  /** Answer a server's `elicitation/create` — a question for the USER, asked
+   *  mid-tool-call. Supplying it declares the `elicitation` capability, so a
+   *  server may then ask; omit it and servers are told you can't. Return
+   *  `{action:"decline"}` (the user said no) or `{action:"cancel"}` (they
+   *  dismissed it) — NEVER fabricate content on the user's behalf. */
+  onElicit?: (
+    request: McpElicitationRequest,
+  ) => Promise<McpElicitResult> | McpElicitResult;
   /** Sent on every request (e.g. `{ authorization: "Bearer …" }`). */
   headers?: Record<string, string>;
   /** Reject responses whose body exceeds this many bytes (0 = no cap). */
@@ -95,6 +108,57 @@ const parseBody = async (response: Response, maxBytes: number) => {
   throw new McpClientError("No JSON-RPC response in the event stream");
 };
 
+/** Read an SSE stream FRAME BY FRAME, answering the server's questions as they
+ *  arrive and returning the JSON-RPC response when it lands.
+ *
+ *  This has to be incremental. Buffering the whole body first (the obvious
+ *  implementation) DEADLOCKS the moment a server elicits: it won't send the
+ *  tool result until we answer, and we'd never answer until the body ended. */
+const consumeSseStream = async (
+  response: Response,
+  maxBytes: number,
+  onRequest: (message: Record<string, unknown>) => Promise<void>,
+) => {
+  const reader = response.body?.getReader();
+  if (!reader) throw new McpClientError("The event stream had no body");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let seen = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    seen += value?.length ?? 0;
+    if (maxBytes > 0 && seen > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new McpClientError("Response exceeded the size cap");
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+    for (const frame of frames) {
+      const line = frame
+        .split(/\r?\n/)
+        .find((entry) => entry.startsWith("data:"));
+      if (!line) continue;
+      const parsed: unknown = JSON.parse(line.slice("data:".length).trim());
+      if (!isRecord(parsed)) continue;
+      // A message with a method is the SERVER asking US something.
+      if (typeof parsed.method === "string") {
+        await onRequest(parsed);
+        continue;
+      }
+      if ("result" in parsed || "error" in parsed) {
+        await reader.cancel().catch(() => undefined);
+
+        return parsed;
+      }
+    }
+  }
+
+  throw new McpClientError("No JSON-RPC response in the event stream");
+};
+
 export const createMcpClient = (options: McpClientOptions): McpClient => {
   const doFetch = options.request ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -102,6 +166,44 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
   let protocolVersion = options.protocolVersion ?? DEFAULT_PROTOCOL;
   let sessionId: string | null = null;
   let nextId = 1;
+
+  /** Send a JSON-RPC RESPONSE back to the server (the answer to something it
+   *  asked). Its own POST, per the transport — 202, no body. */
+  const respond = async (id: unknown, result: unknown) => {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      "mcp-protocol-version": protocolVersion,
+      ...options.headers,
+    };
+    if (sessionId !== null) headers["mcp-session-id"] = sessionId;
+    await doFetch(options.url, {
+      body: JSON.stringify({ id, jsonrpc: "2.0", result }),
+      headers,
+      method: "POST",
+    }).catch(() => undefined);
+  };
+
+  /** The server asked the user something mid-call. Hand it to the host and post
+   *  the verdict back. A host with no handler declines — we never answer FOR
+   *  the user. */
+  const answerServer = async (message: Record<string, unknown>) => {
+    if (message.method !== "elicitation/create") return;
+    const request = isRecord(message.params)
+      ? {
+          message:
+            typeof message.params.message === "string"
+              ? message.params.message
+              : "",
+          requestedSchema: isRecord(message.params.requestedSchema)
+            ? message.params.requestedSchema
+            : {},
+        }
+      : { message: "", requestedSchema: {} };
+    const result: McpElicitResult = options.onElicit
+      ? await options.onElicit(request)
+      : { action: "decline" };
+    await respond(message.id, result);
+  };
 
   const rpc = async (method: string, params?: unknown) => {
     const controller = new AbortController();
@@ -134,7 +236,12 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
           status: 401,
         });
       }
-      const payload = await parseBody(response, maxBytes);
+      const isStream = (response.headers.get("content-type") ?? "").includes(
+        "text/event-stream",
+      );
+      const payload = isStream
+        ? await consumeSseStream(response, maxBytes, answerServer)
+        : await parseBody(response, maxBytes);
       if (!isRecord(payload)) {
         throw new McpClientError("Malformed JSON-RPC response");
       }
@@ -173,7 +280,9 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
 
   const initialize = async () => {
     const result = await rpc("initialize", {
-      capabilities: {},
+      // Declaring `elicitation` is a promise that we can ASK THE USER. Only
+      // make it when the host gave us a way to.
+      capabilities: options.onElicit ? { elicitation: {} } : {},
       clientInfo: options.clientInfo ?? {
         name: "@absolutejs/mcp",
         version: "0",

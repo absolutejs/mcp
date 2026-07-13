@@ -50,12 +50,53 @@ export type McpToolResult = {
 /** What a tool handler may return. A bare string is the common case. */
 export type McpToolReturn = McpContent[] | McpToolResult | string;
 
+/** A question the SERVER asks the USER, mid-tool-call, through the client
+ *  (`elicitation/create`). The schema is a deliberately restricted subset of
+ *  JSON Schema — a FLAT object of primitives (string / number / integer /
+ *  boolean / enum), so any client can render a form for it. Nested objects and
+ *  arrays are not allowed by the spec.
+ *
+ *  Servers MUST NOT elicit sensitive information (spec, Security). */
+export type McpElicitationRequest = {
+  message: string;
+  requestedSchema: Record<string, unknown>;
+};
+
+/** What came back. `unsupported` is ours, not the spec's: it is what you get
+ *  when the client never declared the elicitation capability, so a tool can
+ *  fall back instead of pretending the user declined. */
+export type McpElicitResult =
+  | { action: "accept"; content: Record<string, unknown> }
+  | { action: "cancel" }
+  | { action: "decline" }
+  | { action: "unsupported" };
+
+/** Passed to a tool handler as its second argument. Ignore it and nothing
+ *  changes — every existing handler keeps working. */
+export type McpToolCallContext = {
+  /** True when this client can actually show the user a form. Check it before
+   *  designing a flow around elicit(). */
+  canElicit: boolean;
+  /** Ask the user a question and wait for the answer. Resolves to
+   *  `{action:"unsupported"}` immediately when the client can't elicit, and to
+   *  `{action:"cancel"}` if they never answer. */
+  elicit: (request: McpElicitationRequest) => Promise<McpElicitResult>;
+};
+
 /** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
   annotations?: McpToolAnnotations;
   description: string;
-  handler: (args: unknown) => McpToolReturn | Promise<McpToolReturn>;
+  handler: (
+    args: unknown,
+    context: McpToolCallContext,
+  ) => McpToolReturn | Promise<McpToolReturn>;
   inputSchema: Record<string, unknown>;
+  /** Set when this tool may call `context.elicit`. It makes the server answer
+   *  the `tools/call` with an SSE stream (the only way to send the user a
+   *  question mid-call) instead of a plain JSON body — so it is opt-in per
+   *  tool, and a server whose tools never elicit stays purely stateless. */
+  mayElicit?: boolean;
   /** JSON Schema for `structuredContent`, advertised on `tools/list`. */
   outputSchema?: Record<string, unknown>;
   /** If set, the tool is only listed and callable when the caller's scopes
@@ -145,6 +186,12 @@ export type McpServerConfig<Caller> = {
   instructions?: string;
   /** The token issuer — used for discovery metadata and the challenge URL. */
   issuer: string;
+  /** Turn on elicitation (server asks the USER a question mid-tool-call).
+   *  Off by default, because it makes the endpoint SESSION-STATEFUL: the
+   *  client answers on a separate HTTP request, so the pending call has to be
+   *  remembered in-process. Run one instance, or pin `Mcp-Session-Id`. Tools
+   *  must also opt in with `mayElicit`. */
+  elicitation?: { enabled: true; timeoutMs?: number };
   /** Page size for tools/prompts/resources list pagination (default 50). */
   listPageSize?: number;
   /** Fired after every `tools/call` for auditing. `meta` carries anything the

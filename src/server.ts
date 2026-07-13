@@ -5,7 +5,12 @@
 // inflate a consumer's Eden treaty type.
 
 import { Elysia } from "elysia";
-import { metadataResponse, ROOT_METADATA_PATH, runMcpPost } from "./core";
+import {
+  metadataResponse,
+  ROOT_METADATA_PATH,
+  runMcpDelete,
+  runMcpPost,
+} from "./core";
 import { HTTP_METHOD_NOT_ALLOWED } from "./jsonrpc";
 import { metadataPathFor } from "./metadata";
 import type { McpServerConfig } from "./types";
@@ -13,8 +18,10 @@ import type { McpServerConfig } from "./types";
 /** Build the MCP endpoint as an Elysia plugin. Mount it with `.use(...)`.
  *
  *  Serves:
- *   - `POST <path>`   — the JSON-RPC endpoint (stateless streamable HTTP)
- *   - `GET  <path>`   — 405 (no server-initiated stream to subscribe to)
+ *   - `POST <path>`   — the JSON-RPC endpoint (streamable HTTP; answers with a
+ *     plain JSON body, or an SSE stream when a tool may elicit)
+ *   - `GET  <path>`   — 405 (no standalone server-initiated stream)
+ *   - `DELETE <path>` — end an elicitation session (405 when sessionless)
  *   - `GET  /.well-known/oauth-protected-resource<path>` — RFC 9728 metadata
  *   - `GET  /.well-known/oauth-protected-resource` — the same, if
  *     `serveRootMetadata` is set (only one endpoint per app should). */
@@ -28,9 +35,9 @@ export const mcpServer = <Caller>(config: McpServerConfig<Caller>) => {
       () => new Response(null, { status: HTTP_METHOD_NOT_ALLOWED }),
     )
     // Elysia has already parsed the JSON body (no schema → unknown).
-    .post(config.path, ({ body, request }) =>
-      runMcpPost(config, request, body),
-    );
+    .post(config.path, ({ body, request }) => runMcpPost(config, request, body))
+    // Ending a session (only sessionful when elicitation is on; 405 otherwise).
+    .delete(config.path, ({ request }) => runMcpDelete(config, request));
 
   const app = config.serveRootMetadata
     ? base.get(ROOT_METADATA_PATH, () => metadataResponse(config))
