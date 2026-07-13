@@ -65,8 +65,11 @@ export { mcpServer } from "./server";
 export { createSessionRegistry, type SessionRegistry } from "./sessions";
 export type {
   McpAudioContent,
+  McpElicitAnswer,
   McpElicitationRequest,
+  McpElicitBus,
   McpElicitResult,
+  McpSessionStore,
   McpAuthResult,
   McpCallGate,
   McpCallMeta,
