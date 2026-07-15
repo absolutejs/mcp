@@ -64,6 +64,13 @@ export {
 export { mcpServer } from "./server";
 export { createSessionRegistry, type SessionRegistry } from "./sessions";
 export { createMemoryMcpTaskStore, publicMcpTask } from "./tasks";
+export {
+  createPostgresMcpSessionStore,
+  createPostgresMcpTaskStore,
+  mcpPostgresSchemaSql,
+  type McpSqlClient,
+  type McpSqlResult,
+} from "./postgres";
 export type {
   McpAgencyOptions,
   McpAudioContent,

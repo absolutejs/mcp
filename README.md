@@ -50,6 +50,13 @@ tasks: {
 }
 ```
 
+For multi-instance production deployments, use
+`createPostgresMcpTaskStore()` and `createPostgresMcpSessionStore()` after
+applying `mcpPostgresSchemaSql()`. Task updates and cancellation protect
+terminal states in the database, task reads enforce TTL, and session access
+atomically extends only unexpired sessions. The adapters accept a structural
+SQL client and do not require a particular PostgreSQL driver.
+
 Nothing here depends on a model. The tool shape is structurally compatible with
 [`@absolutejs/ai`](https://github.com/absolutejs/ai)'s `AIToolMap`, so an AI tool
 registry serves over MCP without conversion — but any typed tool registry works.
