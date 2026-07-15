@@ -7,6 +7,49 @@ package owns the JSON-RPC protocol, protocol-version negotiation, RFC 9728
 discovery metadata, and the `401` challenge that lets a client find your
 authorization server.
 
+## Agent action enforcement
+
+Tools carrying manifest contract 2 `authorization` metadata fail closed unless
+an `agency` enforcement point is configured. Every call becomes an exact-input
+action request; allowed calls execute through a short-lived single-use lease and
+produce a receipt. Requestable denials return an `absolute.action_decision`
+payload containing the action id for an approval workflow.
+
+```ts
+import { createAgency, createMemoryAgencyStore } from "@absolutejs/agency";
+
+const agency = createAgency({ policy, store: createMemoryAgencyStore() });
+
+mcpServer<Caller>({
+  agency: {
+    enforcement: agency,
+    resolveActor: ({ caller, scopes }) => ({
+      agentId: caller.agentId,
+      delegationId: caller.delegationId,
+      scopes,
+      userId: caller.userId,
+    }),
+  },
+  // normal MCP config…
+});
+```
+
+## Durable Tasks
+
+The package implements the final `io.modelcontextprotocol/tasks` extension from
+SEP-2663: server-directed task creation, `tasks/get`, `tasks/update`, and
+`tasks/cancel`. There is intentionally no `tasks/list`; task handles are bound
+to an authorization key and checked on every request.
+
+```ts
+tasks: {
+  authorizationKey: (caller) => caller.userId,
+  shouldCreate: ({ name }) => name === "long_running_report",
+  store: createMemoryMcpTaskStore(), // use a durable shared store in production
+  ttlMs: 60 * 60 * 1000,
+}
+```
+
 Nothing here depends on a model. The tool shape is structurally compatible with
 [`@absolutejs/ai`](https://github.com/absolutejs/ai)'s `AIToolMap`, so an AI tool
 registry serves over MCP without conversion — but any typed tool registry works.

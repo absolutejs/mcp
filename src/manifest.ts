@@ -8,12 +8,12 @@ import type { McpServerConfig } from "./types";
  * This package has no AI tools of its own on purpose: it is the transport
  * that serves OTHER packages' manifest tools over MCP. */
 export const manifest = defineManifest<McpServerConfig<unknown>>()({
-  contract: 1,
+  contract: 2,
   identity: {
     accent: "#0ea5e9",
     category: "ai",
     description:
-      "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from your Elysia app. Bridge installed AbsoluteJS packages' manifests with `toMcpToolRegistry` and their tools become callable by any connected MCP client; OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire.",
+      "Serve a remote Model Context Protocol endpoint with OAuth discovery, agency action enforcement, approval receipts, and caller-bound durable Tasks. Bridge installed AbsoluteJS packages' manifests with `toMcpToolRegistry` and enforce their declared effects before execution.",
     docsUrl: "https://github.com/absolutejs/mcp",
     name: "@absolutejs/mcp",
     tagline: "Let AI assistants connect to your site and use its tools.",
@@ -72,7 +72,8 @@ export const manifest = defineManifest<McpServerConfig<unknown>>()({
           ),
         },
         {
-          description: "How this server introduces itself to connecting AI clients.",
+          description:
+            "How this server introduces itself to connecting AI clients.",
           title: "Server identity",
         },
       ),

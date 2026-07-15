@@ -3,6 +3,9 @@
 // request into a caller, and OPTIONAL per-call guards; the package owns the
 // JSON-RPC protocol, discovery metadata, and 401 challenge.
 
+import type { Agency, AgentActor } from "@absolutejs/agency";
+import type { ToolAuthorization } from "@absolutejs/manifest";
+
 /** MCP behaviour hints, passed straight through to the client on `tools/list`.
  *  Structurally identical to `@absolutejs/ai`'s `AIToolAnnotations`, so a tool
  *  map from that package satisfies this without conversion. All optional. */
@@ -115,6 +118,9 @@ export type McpToolCallContext = {
 /** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
   annotations?: McpToolAnnotations;
+  /** Enforceable semantic effects from manifest contract 2. A tool carrying
+   *  this is hidden unless the server configures `agency`. */
+  authorization?: ToolAuthorization;
   description: string;
   handler: (
     args: unknown,
@@ -174,6 +180,63 @@ export type McpCallGate = { block: string };
 
 export type McpToolContext<Caller> = { caller: Caller; meta: McpCallMeta };
 
+export type McpAgencyOptions<Caller> = {
+  enforcement: Agency;
+  resolveActor: (context: {
+    caller: Caller;
+    scopes: string[];
+  }) => Promise<AgentActor> | AgentActor;
+  serverId?: string;
+};
+
+export type McpTaskStatus =
+  | "cancelled"
+  | "completed"
+  | "failed"
+  | "input_required"
+  | "working";
+
+export type McpTask = {
+  authorizationKey: string;
+  createdAt: string;
+  error?: Record<string, unknown>;
+  inputRequests?: Record<string, unknown>;
+  lastUpdatedAt: string;
+  pollIntervalMs?: number;
+  result?: Record<string, unknown>;
+  status: McpTaskStatus;
+  statusMessage?: string;
+  taskId: string;
+  ttlMs: number | null;
+};
+
+export type McpTaskStore = {
+  cancel: (taskId: string) => Promise<void> | void;
+  get: (taskId: string) => Promise<McpTask | null> | McpTask | null;
+  save: (task: McpTask) => Promise<void> | void;
+  update: (
+    taskId: string,
+    update: Partial<Omit<McpTask, "authorizationKey" | "createdAt" | "taskId">>,
+  ) => Promise<McpTask | null> | McpTask | null;
+};
+
+export type McpTasksOptions<Caller> = {
+  authorizationKey: (caller: Caller) => Promise<string> | string;
+  onUpdate?: (context: {
+    caller: Caller;
+    inputResponses: Record<string, unknown>;
+    task: McpTask;
+  }) => Promise<void> | void;
+  pollIntervalMs?: number;
+  shouldCreate: (context: {
+    args: unknown;
+    caller: Caller;
+    name: string;
+  }) => Promise<boolean> | boolean;
+  store: McpTaskStore;
+  ttlMs?: number | null;
+};
+
 export type McpPrompts<Caller> = {
   definitions: Record<string, McpPromptDefinition>;
   get: (ctx: {
@@ -200,6 +263,8 @@ export type McpServerInfo = {
 };
 
 export type McpServerConfig<Caller> = {
+  /** Per-tool action policy enforcement, approval, leases, and receipts. */
+  agency?: McpAgencyOptions<Caller>;
   /** Resolve the request into a caller, or a reason for the 401. The package
    *  emits the 401 + RFC 9728 `WWW-Authenticate` challenge; you decide who is
    *  allowed in. See {@link verifyBearer} for the standard token checks. */
@@ -254,6 +319,8 @@ export type McpServerConfig<Caller> = {
   /** Protocol versions this endpoint accepts; the first is the preferred one.
    *  Defaults to the versions this package knows. */
   supportedProtocols?: string[];
+  /** Final SEP-2663 `io.modelcontextprotocol/tasks` extension support. */
+  tasks?: McpTasksOptions<Caller>;
   /** Build the tool registry for this caller. Called once per request. */
   tools: (
     ctx: McpToolContext<Caller>,

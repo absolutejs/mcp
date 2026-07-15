@@ -3,12 +3,15 @@
 // the Response. Capabilities advertised on `initialize` are derived from what
 // the config actually provides (prompts/resources are optional).
 
+import { createCoazActionInput } from "@absolutejs/agency/authzen";
+
 import { isRecord } from "./guards";
 import {
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_INVALID_PARAMS,
   JSONRPC_INVALID_REQUEST,
   JSONRPC_METHOD_NOT_FOUND,
+  JSONRPC_MISSING_REQUIRED_CLIENT_CAPABILITY,
   notificationAck,
   rpcError,
   rpcResult,
@@ -24,6 +27,7 @@ import type {
   McpToolResult,
   McpToolReturn,
 } from "./types";
+import { publicMcpTask } from "./tasks";
 
 /** Everything a dispatch needs to know about the HTTP request it came in on.
  *  Only elicitation uses it; without it the dispatcher is exactly as stateless
@@ -85,6 +89,27 @@ const negotiateProtocol = (supported: string[], params: unknown) => {
 const scopeAllows = (tool: McpTool, scopes: string[]) =>
   tool.scope === undefined || scopes.includes(tool.scope);
 
+const valueAtPath = (value: unknown, path: string) => {
+  let current = value;
+  for (const segment of path.split(".")) {
+    if (!isRecord(current)) return undefined;
+    current = current[segment];
+  }
+
+  return current;
+};
+
+const agencyAllows = <Caller>(
+  config: McpServerConfig<Caller>,
+  tool: McpTool,
+  scopes: string[],
+) =>
+  tool.authorization === undefined ||
+  (config.agency !== undefined &&
+    (tool.authorization.requiredScopes ?? []).every((scope) =>
+      scopes.includes(scope),
+    ));
+
 /** A handler may return a bare string, a content array, or a full result.
  *  Normalise to the wire shape so every path produces valid `tools/call` output. */
 const normalizeResult = (value: McpToolReturn): McpToolResult => {
@@ -114,6 +139,9 @@ const initialize = async <Caller>(
   const capabilities: Record<string, unknown> = {
     tools: { listChanged: false },
   };
+  if (config.tasks !== undefined) {
+    capabilities.extensions = { "io.modelcontextprotocol/tasks": {} };
+  }
   if (config.prompts) capabilities.prompts = { listChanged: false };
   if (config.resources) {
     capabilities.resources = { listChanged: false, subscribe: false };
@@ -147,7 +175,10 @@ const toolsList = async <Caller>(
 ) => {
   const tools = await config.tools({ caller, meta: {} });
   const visible = Object.entries(tools)
-    .filter(([, tool]) => scopeAllows(tool, scopes))
+    .filter(
+      ([, tool]) =>
+        scopeAllows(tool, scopes) && agencyAllows(config, tool, scopes),
+    )
     .map(([name, tool]) => ({
       annotations: tool.annotations,
       description: tool.description,
@@ -193,6 +224,7 @@ const sseFrame = (message: unknown) => `data: ${JSON.stringify(message)}\n\n`;
 const runTool = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
+  scopes: string[],
   id: JsonRpcId,
   name: string,
   args: unknown,
@@ -203,7 +235,81 @@ const runTool = async <Caller>(
   let ok = false;
   let payload: unknown;
   try {
-    const result = normalizeResult(await tool.handler(args, context));
+    const invoke = async () =>
+      normalizeResult(await tool.handler(args, context));
+    let result: McpToolResult;
+    if (tool.authorization === undefined) {
+      result = await invoke();
+    } else {
+      const agency = config.agency;
+      if (agency === undefined)
+        throw new Error("Agent action policy is not configured");
+      const actor = await agency.resolveActor({ caller, scopes });
+      const actionInput = createCoazActionInput({
+        actor,
+        call: {
+          arguments: args,
+          name,
+          serverId: agency.serverId ?? config.serverInfo.name,
+        },
+        effects: tool.authorization.effects,
+        requiredScopes: tool.authorization.requiredScopes,
+      });
+      const amount = tool.authorization.spend
+        ? valueAtPath(args, tool.authorization.spend.amountMinorField)
+        : undefined;
+      const currency = tool.authorization.spend
+        ? valueAtPath(args, tool.authorization.spend.currencyField)
+        : undefined;
+      const idempotencyKey = tool.authorization.idempotencyKeyField
+        ? valueAtPath(args, tool.authorization.idempotencyKeyField)
+        : undefined;
+      const requested = await agency.enforcement.request({
+        ...actionInput,
+        context: {
+          ...actionInput.context,
+          manifest_authorization: tool.authorization,
+        },
+        idempotencyKey:
+          typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        spend:
+          typeof amount === "number" && typeof currency === "string"
+            ? { amountMinor: amount, currency }
+            : undefined,
+      });
+      meta.agencyActionId = requested.action.actionId;
+      meta.agencyDecisionId = requested.decision.decisionId;
+      if (requested.decision.kind === "deny") {
+        result = {
+          content: [
+            {
+              text: requested.decision.requestable
+                ? `Action requires approval (${requested.action.actionId})`
+                : `Action denied: ${requested.decision.reason}`,
+              type: "text",
+            },
+          ],
+          isError: true,
+          structuredContent: {
+            actionId: requested.action.actionId,
+            decision: requested.decision,
+            type: "absolute.action_decision",
+          },
+        };
+      } else {
+        const lease = await agency.enforcement.issueLease(
+          requested.action.actionId,
+        );
+        const executed = await agency.enforcement.execute({
+          executor: `mcp:${config.serverInfo.name}/${name}`,
+          leaseId: lease.leaseId,
+          run: invoke,
+        });
+        meta.agencyLeaseId = lease.leaseId;
+        meta.agencyReceiptId = executed.receipt.receiptId;
+        result = executed.result;
+      }
+    }
     ok = result.isError !== true;
     payload = { id, jsonrpc: "2.0", result };
   } catch (error) {
@@ -229,6 +335,7 @@ const runTool = async <Caller>(
 const toolsCallStreaming = <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
+  scopes: string[],
   id: JsonRpcId,
   name: string,
   args: unknown,
@@ -267,6 +374,7 @@ const toolsCallStreaming = <Caller>(
       const payload = await runTool(
         config,
         caller,
+        scopes,
         id,
         name,
         args,
@@ -310,8 +418,66 @@ const toolsCall = async <Caller>(
   const tool = tools[name];
   // Scope-gated tools that the caller can't see are reported as unknown, so a
   // hidden tool is indistinguishable from one that doesn't exist.
-  if (!tool || !scopeAllows(tool, scopes)) {
+  if (
+    !tool ||
+    !scopeAllows(tool, scopes) ||
+    !agencyAllows(config, tool, scopes)
+  ) {
     return rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown tool: ${name}`);
+  }
+
+  const tasks = config.tasks;
+  if (
+    tasks !== undefined &&
+    (await tasks.shouldCreate({ args, caller, name }))
+  ) {
+    if (!supportsTasks(params)) {
+      return rpcError(
+        id,
+        JSONRPC_MISSING_REQUIRED_CLIENT_CAPABILITY,
+        "Missing required client capability",
+        {
+          requiredCapabilities: {
+            extensions: { "io.modelcontextprotocol/tasks": {} },
+          },
+        },
+      );
+    }
+    const createdAt = new Date().toISOString();
+    const task = {
+      authorizationKey: await tasks.authorizationKey(caller),
+      createdAt,
+      lastUpdatedAt: createdAt,
+      pollIntervalMs: tasks.pollIntervalMs,
+      status: "working" as const,
+      taskId: crypto.randomUUID(),
+      ttlMs: tasks.ttlMs ?? null,
+    };
+    await tasks.store.save(task);
+    setTimeout(() => {
+      void runTool(config, caller, scopes, id, name, args, meta, tool, noElicit)
+        .then(async (payload) => {
+          const result =
+            isRecord(payload) && isRecord(payload.result)
+              ? payload.result
+              : { content: [], isError: true };
+          await tasks.store.update(task.taskId, {
+            result,
+            status: "completed",
+          });
+        })
+        .catch(async (error) => {
+          await tasks.store.update(task.taskId, {
+            error: {
+              code: JSONRPC_INTERNAL_ERROR,
+              message: error instanceof Error ? error.message : "Task failed",
+            },
+            status: "failed",
+          });
+        });
+    }, 0);
+
+    return rpcResult(id, { ...publicMcpTask(task), resultType: "task" });
   }
 
   // A tool that may ask the user something answers over SSE — but only when
@@ -330,6 +496,7 @@ const toolsCall = async <Caller>(
     return toolsCallStreaming(
       config,
       caller,
+      scopes,
       id,
       name,
       args,
@@ -343,6 +510,7 @@ const toolsCall = async <Caller>(
   const payload = await runTool(
     config,
     caller,
+    scopes,
     id,
     name,
     args,
@@ -354,6 +522,85 @@ const toolsCall = async <Caller>(
   return new Response(JSON.stringify(payload), {
     headers: { "content-type": "application/json" },
   });
+};
+
+const supportsTasks = (params: unknown) => {
+  if (!isRecord(params) || !isRecord(params._meta)) return false;
+  const capabilities =
+    params._meta["io.modelcontextprotocol/clientCapabilities"];
+  if (!isRecord(capabilities) || !isRecord(capabilities.extensions))
+    return false;
+
+  return isRecord(capabilities.extensions["io.modelcontextprotocol/tasks"]);
+};
+
+const authorizedTask = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  params: unknown,
+) => {
+  if (
+    config.tasks === undefined ||
+    !isRecord(params) ||
+    typeof params.taskId !== "string"
+  ) {
+    return null;
+  }
+  const task = await config.tasks.store.get(params.taskId);
+  if (task === null) return null;
+  const authorizationKey = await config.tasks.authorizationKey(caller);
+
+  return task.authorizationKey === authorizationKey ? task : null;
+};
+
+const tasksGet = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  params: unknown,
+) => {
+  const task = await authorizedTask(config, caller, params);
+  if (task === null)
+    return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
+
+  return rpcResult(id, { ...publicMcpTask(task), resultType: "complete" });
+};
+
+const tasksUpdate = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  params: unknown,
+) => {
+  const task = await authorizedTask(config, caller, params);
+  if (task === null || !isRecord(params) || !isRecord(params.inputResponses)) {
+    return rpcError(
+      id,
+      JSONRPC_INVALID_PARAMS,
+      "Unknown task or invalid inputResponses",
+    );
+  }
+  await config.tasks?.onUpdate?.({
+    caller,
+    inputResponses: params.inputResponses,
+    task,
+  });
+
+  return rpcResult(id, { resultType: "complete" });
+};
+
+const tasksCancel = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  params: unknown,
+) => {
+  const task = await authorizedTask(config, caller, params);
+  if (task === null)
+    return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
+  await config.tasks?.store.cancel(task.taskId);
+
+  return rpcResult(id, { resultType: "complete" });
 };
 
 const promptsList = <Caller>(
@@ -511,6 +758,17 @@ export const dispatchMcp = async <Caller>(
   if (method === "initialize") {
     return await initialize(config, id, params, context);
   }
+  if (method === "server/discover") {
+    return rpcResult(id, {
+      capabilities: {
+        extensions:
+          config.tasks === undefined
+            ? {}
+            : { "io.modelcontextprotocol/tasks": {} },
+      },
+      serverInfo: config.serverInfo,
+    });
+  }
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") {
     return toolsList(config, caller, scopes, id, params);
@@ -518,6 +776,9 @@ export const dispatchMcp = async <Caller>(
   if (method === "tools/call") {
     return toolsCall(config, caller, scopes, id, params, context);
   }
+  if (method === "tasks/get") return tasksGet(config, caller, id, params);
+  if (method === "tasks/update") return tasksUpdate(config, caller, id, params);
+  if (method === "tasks/cancel") return tasksCancel(config, caller, id, params);
   if (method === "prompts/list") return promptsList(config, id, params);
   if (method === "prompts/get") return promptsGet(config, caller, id, params);
   if (method === "resources/list") {

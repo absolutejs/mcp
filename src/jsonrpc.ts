@@ -6,6 +6,7 @@ export const JSONRPC_INVALID_REQUEST = -32600;
 export const JSONRPC_METHOD_NOT_FOUND = -32601;
 export const JSONRPC_INVALID_PARAMS = -32602;
 export const JSONRPC_INTERNAL_ERROR = -32603;
+export const JSONRPC_MISSING_REQUIRED_CLIENT_CAPABILITY = -32003;
 
 export const HTTP_ACCEPTED = 202;
 export const HTTP_NO_CONTENT = 204;
@@ -23,9 +24,18 @@ export const rpcResult = (id: JsonRpcId, result: unknown) =>
     headers: jsonHeaders,
   });
 
-export const rpcError = (id: JsonRpcId, code: number, message: string) =>
+export const rpcError = (
+  id: JsonRpcId,
+  code: number,
+  message: string,
+  data?: Record<string, unknown>,
+) =>
   new Response(
-    JSON.stringify({ error: { code, message }, id, jsonrpc: "2.0" }),
+    JSON.stringify({
+      error: { code, message, ...(data === undefined ? {} : { data }) },
+      id,
+      jsonrpc: "2.0",
+    }),
     {
       headers: jsonHeaders,
     },

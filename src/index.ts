@@ -63,7 +63,9 @@ export {
 } from "./metadata";
 export { mcpServer } from "./server";
 export { createSessionRegistry, type SessionRegistry } from "./sessions";
+export { createMemoryMcpTaskStore, publicMcpTask } from "./tasks";
 export type {
+  McpAgencyOptions,
   McpAudioContent,
   McpElicitAnswer,
   McpElicitationRequest,
@@ -84,6 +86,10 @@ export type {
   McpServerConfig,
   McpServerInfo,
   McpTextContent,
+  McpTask,
+  McpTaskStatus,
+  McpTaskStore,
+  McpTasksOptions,
   McpTool,
   McpToolAnnotations,
   McpToolCallContext,
