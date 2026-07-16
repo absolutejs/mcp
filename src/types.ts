@@ -123,6 +123,9 @@ export type McpToolCallContext = {
 /** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
   annotations?: McpToolAnnotations;
+  /** OpenID AuthZEN COAZ opt-in marker. When true, inputSchema MUST carry an
+   *  `x-coaz-mapping`; hosts should evaluate it before invoking the handler. */
+  coaz?: boolean;
   /** Enforceable semantic effects from manifest contract 2. A tool carrying
    *  this is hidden unless the server configures `agency`. */
   authorization?: ToolAuthorization;

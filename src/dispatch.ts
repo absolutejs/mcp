@@ -181,6 +181,7 @@ const toolsList = async <Caller>(
     )
     .map(([name, tool]) => ({
       annotations: tool.annotations,
+      ...(tool.coaz === undefined ? {} : { coaz: tool.coaz }),
       description: tool.description,
       inputSchema: tool.inputSchema,
       name,

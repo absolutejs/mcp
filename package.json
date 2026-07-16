@@ -11,8 +11,8 @@
     "elysia": ">=1.1.0"
   },
   "dependencies": {
-    "@absolutejs/agency": "^0.3.0",
-    "@absolutejs/manifest": "^0.2.0",
+    "@absolutejs/agency": "^0.4.0",
+    "@absolutejs/manifest": "^0.3.0",
     "@sinclair/typebox": "^0.34.0"
   },
   "license": "BUSL-1.1",
@@ -58,5 +58,5 @@
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.8.0"
+  "version": "0.9.0"
 }

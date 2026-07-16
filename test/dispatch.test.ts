@@ -72,9 +72,17 @@ describe("dispatchMcp", () => {
       tools: () => ({
         del: {
           annotations: { destructiveHint: true },
+          coaz: true,
           description: "danger",
           handler: () => "ok",
-          inputSchema: { type: "object" },
+          inputSchema: {
+            type: "object",
+            "x-coaz-mapping": {
+              subject: [{ id: "caller.id" }],
+              resource: [{ id: "arguments.id" }],
+              context: [{ source: "'mcp'" }],
+            },
+          },
         },
       }),
     });
@@ -83,6 +91,7 @@ describe("dispatchMcp", () => {
     expect(tools).toHaveLength(1);
     expect(tools[0]).toMatchObject({
       annotations: { destructiveHint: true },
+      coaz: true,
       name: "del",
     });
   });

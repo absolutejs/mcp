@@ -1,5 +1,9 @@
 # @absolutejs/mcp
 
+MCP tool discovery preserves the OpenID AuthZEN COAZ `coaz` marker and
+`x-coaz-mapping` JSON Schema extension end to end. Use `@absolutejs/policy` to
+validate and evaluate the mapping before dispatching an authorized tool call.
+
 Serve a remote [Model Context Protocol](https://modelcontextprotocol.io) endpoint
 — streamable HTTP, stateless — from a tool/prompt/resource registry. You supply
 **which** tools to expose and **how** to authorize a request into a caller; the

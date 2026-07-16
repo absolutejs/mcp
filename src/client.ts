@@ -58,6 +58,7 @@ export type McpClientOptions = {
 
 export type McpRemoteTool = {
   annotations?: McpToolAnnotations;
+  coaz?: boolean;
   description?: string;
   inputSchema?: Record<string, unknown>;
   name: string;
@@ -343,6 +344,7 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
             annotations: isRecord(tool.annotations)
               ? (tool.annotations as McpToolAnnotations)
               : undefined,
+            coaz: typeof tool.coaz === "boolean" ? tool.coaz : undefined,
             description:
               typeof tool.description === "string"
                 ? tool.description
