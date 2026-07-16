@@ -12,6 +12,7 @@ import type {
   McpToolAnnotations,
   McpToolResult,
 } from "./types";
+import type { McpAuthorizationProvider } from "./oauth";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_PROTOCOL = "2025-06-18";
@@ -32,6 +33,9 @@ export class McpClientError extends Error {
 }
 
 export type McpClientOptions = {
+  /** Dynamic OAuth/DPoP provider. It may answer a 401 by completing discovery,
+   *  incremental authorization, or refresh; the request is retried once. */
+  authorization?: McpAuthorizationProvider;
   clientInfo?: { name: string; version: string };
   /** Answer a server's `elicitation/create` — a question for the USER, asked
    *  mid-tool-call. Supplying it declares the `elicitation` capability, so a
@@ -167,6 +171,9 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
   let sessionId: string | null = null;
   let nextId = 1;
 
+  const authorizationHeaders = (method: string) =>
+    options.authorization?.headers({ method, url: options.url }) ?? {};
+
   /** Send a JSON-RPC RESPONSE back to the server (the answer to something it
    *  asked). Its own POST, per the transport — 202, no body. */
   const respond = async (id: unknown, result: unknown) => {
@@ -174,6 +181,7 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
       "content-type": "application/json",
       "mcp-protocol-version": protocolVersion,
       ...options.headers,
+      ...(await authorizationHeaders("POST")),
     };
     if (sessionId !== null) headers["mcp-session-id"] = sessionId;
     await doFetch(options.url, {
@@ -216,19 +224,36 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
         "content-type": "application/json",
         "mcp-protocol-version": protocolVersion,
         ...options.headers,
+        ...(await authorizationHeaders("POST")),
       };
       if (sessionId !== null) headers["mcp-session-id"] = sessionId;
-      const response = await doFetch(options.url, {
-        body: JSON.stringify({
-          id: nextId++,
-          jsonrpc: "2.0",
-          method,
-          ...(params === undefined ? {} : { params }),
-        }),
+      const requestBody = JSON.stringify({
+        id: nextId++,
+        jsonrpc: "2.0",
+        method,
+        ...(params === undefined ? {} : { params }),
+      });
+      let response = await doFetch(options.url, {
+        body: requestBody,
         headers,
         method: "POST",
         signal: controller.signal,
       });
+      if (response.status === 401 && options.authorization?.onUnauthorized) {
+        const retry = await options.authorization.onUnauthorized({
+          method: "POST",
+          response,
+          url: options.url,
+        });
+        if (retry) {
+          response = await doFetch(options.url, {
+            body: requestBody,
+            headers: { ...headers, ...(await authorizationHeaders("POST")) },
+            method: "POST",
+            signal: controller.signal,
+          });
+        }
+      }
       const captured = response.headers.get("mcp-session-id");
       if (captured) sessionId = captured;
       if (response.status === 401) {
@@ -269,6 +294,7 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
       "content-type": "application/json",
       "mcp-protocol-version": protocolVersion,
       ...options.headers,
+      ...(await authorizationHeaders("POST")),
     };
     if (sessionId !== null) headers["mcp-session-id"] = sessionId;
     await doFetch(options.url, {

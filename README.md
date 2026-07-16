@@ -309,6 +309,35 @@ app.use(mcpServer({ path: "/mcp" /* member */ })).use(
 
 Only one endpoint per app should set `serveRootMetadata` (the un-suffixed alias).
 
+## OAuth-native MCP client
+
+`createMcpOAuthProvider` handles the current MCP authorization flow without
+coupling to an identity vendor: RFC 9728 protected-resource discovery, OAuth or
+OIDC authorization-server discovery, Client ID Metadata Document identifiers,
+PKCE S256, resource indicators, refresh rotation, incremental scope challenges,
+and optional DPoP proofs. The host owns the user interaction and token store.
+
+```ts
+const authorization = createMcpOAuthProvider({
+  endpoint: "https://tools.example/mcp",
+  clientId: "https://my-agent.example/oauth-client.json",
+  redirectUri: "https://my-agent.example/oauth/callback",
+  fetch: egress.fetch,
+  store: durableTokenStore,
+  onAuthorize: showConsentAndWaitForCallback,
+});
+
+const client = createMcpClient({
+  url: "https://tools.example/mcp",
+  authorization,
+});
+```
+
+The client retries a 401 only once and only after the authorization provider
+reports success. Metadata fetches require HTTPS, reject redirects, enforce byte
+limits, verify issuer/resource identity, and use the injected fetch so production
+deployments can route discovery through `@absolutejs/egress`.
+
 ## License
 
 Business Source License 1.1 — see [LICENSE](./LICENSE). Converts to Apache 2.0

@@ -46,6 +46,7 @@ export {
   type McpInitializeResult,
   type McpRemoteTool,
 } from "./client";
+export * from "./oauth";
 export { dispatchMcp, type McpDispatchContext } from "./dispatch";
 export {
   FEEDBACK_INSTRUCTIONS,
