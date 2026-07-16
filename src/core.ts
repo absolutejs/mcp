@@ -3,7 +3,7 @@
 // Request/Response, so it runs on Bun.serve, Hono, Next.js route handlers,
 // Cloudflare Workers, or Elysia unchanged.
 
-import { dispatchMcp } from "./dispatch";
+import { dispatchMcp, MCP_LATEST_PROTOCOL_VERSION } from "./dispatch";
 import { createSessionRegistry, type SessionRegistry } from "./sessions";
 import {
   HTTP_METHOD_NOT_ALLOWED,
@@ -92,6 +92,27 @@ export const runMcpPost = async <Caller>(
     return rpcError(null, JSONRPC_INVALID_REQUEST, "Batching is not supported");
   }
 
+  const isInitialize =
+    typeof body === "object" &&
+    body !== null &&
+    "method" in body &&
+    (body as { method?: unknown }).method === "initialize";
+  const protocolVersion = request.headers.get("mcp-protocol-version");
+  const supportedProtocols = config.supportedProtocols ?? [
+    MCP_LATEST_PROTOCOL_VERSION,
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05",
+  ];
+  if (
+    !isInitialize &&
+    (protocolVersion === null || !supportedProtocols.includes(protocolVersion))
+  ) {
+    return new Response("Missing or unsupported MCP-Protocol-Version", {
+      status: 400,
+    });
+  }
+
   const sessions = registryFor(config);
   const sessionId = request.headers.get("mcp-session-id");
   // A session we don't know is one we restarted out from under (or, with a
@@ -102,6 +123,8 @@ export const runMcpPost = async <Caller>(
   }
 
   return dispatchMcp(config, auth.caller, auth.scopes ?? [], body, {
+    protocolVersion: protocolVersion ?? MCP_LATEST_PROTOCOL_VERSION,
+    requestSignal: request.signal,
     sessionId,
     sessions,
   }).catch(() => rpcError(null, JSONRPC_INVALID_REQUEST, "Internal error"));

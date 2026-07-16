@@ -60,10 +60,20 @@ export type McpToolReturn = McpContent[] | McpToolResult | string;
  *  arrays are not allowed by the spec.
  *
  *  Servers MUST NOT elicit sensitive information (spec, Security). */
-export type McpElicitationRequest = {
+export type McpFormElicitationRequest = {
   message: string;
+  mode?: "form";
   requestedSchema: Record<string, unknown>;
 };
+export type McpUrlElicitationRequest = {
+  elicitationId: string;
+  message: string;
+  mode: "url";
+  url: string;
+};
+export type McpElicitationRequest =
+  | McpFormElicitationRequest
+  | McpUrlElicitationRequest;
 
 /** What came back. `unsupported` is ours, not the spec's: it is what you get
  *  when the client never declared the elicitation capability, so a tool can
@@ -85,11 +95,17 @@ export type McpElicitAnswer = {
  *  in your database and any instance can serve any session. Nothing here is
  *  sensitive or large — an id and a capability flag. */
 export type McpSessionStore = {
-  create: (session: { canElicit: boolean }) => Promise<string> | string;
+  create: (session: {
+    canElicit: boolean;
+    canElicitUrl?: boolean;
+  }) => Promise<string> | string;
   drop: (id: string) => Promise<void> | void;
   get: (
     id: string,
-  ) => Promise<{ canElicit: boolean } | null> | { canElicit: boolean } | null;
+  ) =>
+    | Promise<{ canElicit: boolean; canElicitUrl?: boolean } | null>
+    | { canElicit: boolean; canElicitUrl?: boolean }
+    | null;
 };
 
 /** How an answer reaches the instance that asked the question. The tool call
@@ -114,6 +130,8 @@ export type McpToolCallContext = {
   /** True when this client can actually show the user a form. Check it before
    *  designing a flow around elicit(). */
   canElicit: boolean;
+  /** True only when the client negotiated secure URL-mode elicitation. */
+  canElicitUrl: boolean;
   /** Ask the user a question and wait for the answer. Resolves to
    *  `{action:"unsupported"}` immediately when the client can't elicit, and to
    *  `{action:"cancel"}` if they never answer. */
@@ -142,6 +160,9 @@ export type McpTool = {
   mayElicit?: boolean;
   /** JSON Schema for `structuredContent`, advertised on `tools/list`. */
   outputSchema?: Record<string, unknown>;
+  /** MCP 2025-11-25 task augmentation support for this tool. Omitted means
+   *  forbidden, as required by the specification. */
+  taskSupport?: "forbidden" | "optional" | "required";
   /** If set, the tool is only listed and callable when the caller's scopes
    *  include this. Tools without a scope are always available. Fails closed:
    *  a scoped tool is hidden when the caller's scopes are unknown. */
@@ -221,6 +242,11 @@ export type McpTask = {
 export type McpTaskStore = {
   cancel: (taskId: string) => Promise<void> | void;
   get: (taskId: string) => Promise<McpTask | null> | McpTask | null;
+  /** List only tasks owned by this authorization context, newest first. */
+  list: (
+    authorizationKey: string,
+    options: { limit: number; offset: number },
+  ) => Promise<McpTask[]> | McpTask[];
   save: (task: McpTask) => Promise<void> | void;
   update: (
     taskId: string,
@@ -236,6 +262,8 @@ export type McpTasksOptions<Caller> = {
     task: McpTask;
   }) => Promise<void> | void;
   pollIntervalMs?: number;
+  /** Maximum tasks returned by one tasks/list page (default 50, max 100). */
+  listPageSize?: number;
   shouldCreate: (context: {
     args: unknown;
     caller: Caller;
@@ -327,7 +355,8 @@ export type McpServerConfig<Caller> = {
   /** Protocol versions this endpoint accepts; the first is the preferred one.
    *  Defaults to the versions this package knows. */
   supportedProtocols?: string[];
-  /** Final SEP-2663 `io.modelcontextprotocol/tasks` extension support. */
+  /** MCP 2025-11-25 native tasks plus legacy SEP-2663 compatibility for
+   *  older negotiated protocol versions. */
   tasks?: McpTasksOptions<Caller>;
   /** Build the tool registry for this caller. Called once per request. */
   tools: (

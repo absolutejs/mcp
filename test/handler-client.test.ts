@@ -39,7 +39,11 @@ const url = "https://example.test/mcp";
 const post = (headers: Record<string, string>, message: unknown) =>
   new Request(url, {
     body: JSON.stringify(message),
-    headers: { "content-type": "application/json", ...headers },
+    headers: {
+      "content-type": "application/json",
+      "mcp-protocol-version": "2025-11-25",
+      ...headers,
+    },
     method: "POST",
   });
 
@@ -117,7 +121,7 @@ describe("createMcpClient against the handler (interop)", () => {
 
     const init = await client.initialize();
     expect(init.serverInfo?.name).toBe("harness");
-    expect(init.protocolVersion).toBe("2025-06-18");
+    expect(init.protocolVersion).toBe("2025-11-25");
 
     const tools = await client.listTools();
     expect(tools.map((tool) => tool.name)).toEqual(["add"]);

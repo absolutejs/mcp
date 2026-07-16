@@ -9,7 +9,9 @@ Serve a remote [Model Context Protocol](https://modelcontextprotocol.io) endpoin
 **which** tools to expose and **how** to authorize a request into a caller; the
 package owns the JSON-RPC protocol, protocol-version negotiation, RFC 9728
 discovery metadata, and the `401` challenge that lets a client find your
-authorization server.
+authorization server. The default negotiated revision is the current finalized
+`2025-11-25` specification; older finalized revisions remain available when
+explicitly requested.
 
 ## Agent action enforcement
 
@@ -40,10 +42,11 @@ mcpServer<Caller>({
 
 ## Durable Tasks
 
-The package implements the final `io.modelcontextprotocol/tasks` extension from
-SEP-2663: server-directed task creation, `tasks/get`, `tasks/update`, and
-`tasks/cancel`. There is intentionally no `tasks/list`; task handles are bound
-to an authorization key and checked on every request.
+The package implements native MCP `2025-11-25` task augmentation:
+`execution.taskSupport`, client-requested task creation, `tasks/get`,
+`tasks/result`, authorization-bound `tasks/list`, and terminal-safe
+`tasks/cancel`. It also retains the older `io.modelcontextprotocol/tasks`
+SEP-2663 wire shape only when an older protocol revision is negotiated.
 
 ```ts
 tasks: {
@@ -52,7 +55,19 @@ tasks: {
   store: createMemoryMcpTaskStore(), // use a durable shared store in production
   ttlMs: 60 * 60 * 1000,
 }
+
+tools: () => ({
+  long_running_report: {
+    taskSupport: "optional", // "required" and "forbidden" are also supported
+    // normal tool definition…
+  },
+})
 ```
+
+Clients can use `callToolAsTask`, then `getTask`, `listTasks`, `cancelTask`, and
+`getTaskResult`. Task status never exposes the stored result or authorization
+key; the final result is returned only by `tasks/result` with required
+`io.modelcontextprotocol/related-task` metadata.
 
 For multi-instance production deployments, use
 `createPostgresMcpTaskStore()` and `createPostgresMcpSessionStore()` after
@@ -227,6 +242,13 @@ answer is `accept` (with `content`), `decline` (they said no), `cancel` (they
 dismissed it), or `unsupported` (this client can't ask anyone — check
 `canElicit` and take another path). Never fabricate an answer for the user; the
 spec also forbids eliciting **sensitive information**.
+
+For credentials, third-party OAuth, or payment flows, use `mode: "url"` with a
+unique `elicitationId` and HTTPS URL. The client advertises form and URL modes
+separately, never prefetches the URL, and returns only the user's consent—not
+credentials or page contents. Tool handlers can check `canElicitUrl` before
+starting the flow. The server rejects non-HTTPS URLs except localhost
+development URLs and rejects URLs containing embedded credentials.
 
 **The trade-off, stated plainly.** Elicitation is the one MCP feature a
 stateless server cannot do: the question goes out on the SSE stream of an

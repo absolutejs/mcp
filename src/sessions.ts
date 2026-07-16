@@ -46,7 +46,10 @@ export type SessionRegistry = ReturnType<typeof createSessionRegistry>;
 /** In-memory session store — the default, and the right one for a single
  *  instance. Swap it for a DB-backed one to run several. */
 const createMemoryStore = (ttlMs: number): McpSessionStore => {
-  const sessions = new Map<string, { canElicit: boolean; lastSeen: number }>();
+  const sessions = new Map<
+    string,
+    { canElicit: boolean; canElicitUrl: boolean; lastSeen: number }
+  >();
   let sinceSweep = 0;
 
   const sweep = () => {
@@ -63,7 +66,11 @@ const createMemoryStore = (ttlMs: number): McpSessionStore => {
     create: (session) => {
       sweep();
       const id = crypto.randomUUID();
-      sessions.set(id, { canElicit: session.canElicit, lastSeen: Date.now() });
+      sessions.set(id, {
+        canElicit: session.canElicit,
+        canElicitUrl: session.canElicitUrl ?? false,
+        lastSeen: Date.now(),
+      });
 
       return id;
     },
@@ -75,7 +82,10 @@ const createMemoryStore = (ttlMs: number): McpSessionStore => {
       if (!session) return null;
       session.lastSeen = Date.now();
 
-      return { canElicit: session.canElicit };
+      return {
+        canElicit: session.canElicit,
+        canElicitUrl: session.canElicitUrl,
+      };
     },
   };
 };
@@ -130,9 +140,9 @@ export const createSessionRegistry = (options?: {
       pending.clear();
     },
 
-    create: async (canElicit: boolean) => {
+    create: async (canElicit: boolean, canElicitUrl = false) => {
       await ready;
-      return await store.create({ canElicit });
+      return await store.create({ canElicit, canElicitUrl });
     },
 
     drop: async (id: string) => {

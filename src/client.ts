@@ -15,7 +15,7 @@ import type {
 import type { McpAuthorizationProvider } from "./oauth";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_PROTOCOL = "2025-06-18";
+const DEFAULT_PROTOCOL = "2025-11-25";
 
 export class McpClientError extends Error {
   public readonly code: number | undefined;
@@ -63,6 +63,17 @@ export type McpRemoteTool = {
   inputSchema?: Record<string, unknown>;
   name: string;
   outputSchema?: Record<string, unknown>;
+  taskSupport?: "forbidden" | "optional" | "required";
+};
+
+export type McpRemoteTask = {
+  createdAt: string;
+  lastUpdatedAt: string;
+  pollInterval?: number;
+  status: "working" | "input_required" | "completed" | "failed" | "cancelled";
+  statusMessage?: string;
+  taskId: string;
+  ttl: number | null;
 };
 
 export type McpInitializeResult = {
@@ -74,7 +85,16 @@ export type McpInitializeResult = {
 
 export type McpClient = {
   callTool: (name: string, args?: unknown) => Promise<McpToolResult>;
+  callToolAsTask: (
+    name: string,
+    args?: unknown,
+    options?: { ttl?: number },
+  ) => Promise<McpRemoteTask>;
+  cancelTask: (taskId: string) => Promise<McpRemoteTask>;
+  getTask: (taskId: string) => Promise<McpRemoteTask>;
+  getTaskResult: (taskId: string) => Promise<McpToolResult>;
   initialize: () => Promise<McpInitializeResult>;
+  listTasks: () => Promise<McpRemoteTask[]>;
   listResources: () => Promise<unknown[]>;
   listTools: () => Promise<McpRemoteTool[]>;
   ping: () => Promise<void>;
@@ -197,21 +217,33 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
    *  the user. */
   const answerServer = async (message: Record<string, unknown>) => {
     if (message.method !== "elicitation/create") return;
-    const request = isRecord(message.params)
-      ? {
-          message:
-            typeof message.params.message === "string"
-              ? message.params.message
-              : "",
-          requestedSchema: isRecord(message.params.requestedSchema)
-            ? message.params.requestedSchema
-            : {},
-        }
-      : { message: "", requestedSchema: {} };
+    const params = isRecord(message.params) ? message.params : {};
+    const request: McpElicitationRequest =
+      params.mode === "url" &&
+      typeof params.elicitationId === "string" &&
+      typeof params.url === "string"
+        ? {
+            elicitationId: params.elicitationId,
+            message: typeof params.message === "string" ? params.message : "",
+            mode: "url",
+            url: params.url,
+          }
+        : {
+            message: typeof params.message === "string" ? params.message : "",
+            mode: "form",
+            requestedSchema: isRecord(params.requestedSchema)
+              ? params.requestedSchema
+              : {},
+          };
     const result: McpElicitResult = options.onElicit
       ? await options.onElicit(request)
       : { action: "decline" };
-    await respond(message.id, result);
+    await respond(
+      message.id,
+      request.mode === "url" && result.action === "accept"
+        ? { action: "accept" }
+        : result,
+    );
   };
 
   const rpc = async (method: string, params?: unknown) => {
@@ -309,7 +341,9 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
     const result = await rpc("initialize", {
       // Declaring `elicitation` is a promise that we can ASK THE USER. Only
       // make it when the host gave us a way to.
-      capabilities: options.onElicit ? { elicitation: {} } : {},
+      capabilities: options.onElicit
+        ? { elicitation: { form: {}, url: {} } }
+        : {},
       clientInfo: options.clientInfo ?? {
         name: "@absolutejs/mcp",
         version: "0",
@@ -356,6 +390,13 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
             outputSchema: isRecord(tool.outputSchema)
               ? tool.outputSchema
               : undefined,
+            taskSupport:
+              isRecord(tool.execution) &&
+              (tool.execution.taskSupport === "forbidden" ||
+                tool.execution.taskSupport === "optional" ||
+                tool.execution.taskSupport === "required")
+                ? tool.execution.taskSupport
+                : undefined,
           }),
         ),
       );
@@ -377,6 +418,61 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
     }
 
     return { content: [], isError: false };
+  };
+
+  const taskFrom = (value: unknown): McpRemoteTask => {
+    if (!isRecord(value) || typeof value.taskId !== "string") {
+      throw new McpClientError("Malformed MCP task response");
+    }
+    return value as McpRemoteTask;
+  };
+
+  const callToolAsTask = async (
+    name: string,
+    args?: unknown,
+    options: { ttl?: number } = {},
+  ) => {
+    const result = await rpc("tools/call", {
+      arguments: args ?? {},
+      name,
+      task: options.ttl === undefined ? {} : { ttl: options.ttl },
+    });
+    return taskFrom(isRecord(result) ? result.task : undefined);
+  };
+
+  const getTask = async (taskId: string) =>
+    taskFrom(await rpc("tasks/get", { taskId }));
+
+  const cancelTask = async (taskId: string) =>
+    taskFrom(await rpc("tasks/cancel", { taskId }));
+
+  const getTaskResult = async (taskId: string) => {
+    const result = await rpc("tasks/result", { taskId });
+    if (!isRecord(result) || !Array.isArray(result.content)) {
+      throw new McpClientError("Malformed MCP task result");
+    }
+    return result as McpToolResult;
+  };
+
+  const listTasks = async () => {
+    const collected: McpRemoteTask[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
+      const result = await rpc(
+        "tasks/list",
+        cursor === undefined ? undefined : { cursor },
+      );
+      if (isRecord(result) && Array.isArray(result.tasks)) {
+        collected.push(...result.tasks.map(taskFrom));
+      }
+      const next =
+        isRecord(result) && typeof result.nextCursor === "string"
+          ? result.nextCursor
+          : undefined;
+      if (next === undefined) break;
+      cursor = next;
+    }
+    return collected;
   };
 
   const listResources = async () => {
@@ -407,5 +503,17 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
     await rpc("ping");
   };
 
-  return { callTool, initialize, listResources, listTools, ping, readResource };
+  return {
+    callTool,
+    callToolAsTask,
+    cancelTask,
+    getTask,
+    getTaskResult,
+    initialize,
+    listResources,
+    listTasks,
+    listTools,
+    ping,
+    readResource,
+  };
 };

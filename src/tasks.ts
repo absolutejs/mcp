@@ -20,6 +20,14 @@ export const createMemoryMcpTaskStore = (): McpTaskStore => {
 
       return task === undefined ? null : clone(task);
     },
+    list: (authorizationKey, { limit, offset }) =>
+      [...tasks.values()]
+        .filter((task) => task.authorizationKey === authorizationKey)
+        .sort((left, right) =>
+          right.lastUpdatedAt.localeCompare(left.lastUpdatedAt),
+        )
+        .slice(offset, offset + limit)
+        .map(clone),
     save: (task) => {
       tasks.set(task.taskId, clone(task));
     },
@@ -43,6 +51,13 @@ export const createMemoryMcpTaskStore = (): McpTaskStore => {
 
 export const publicMcpTask = ({ authorizationKey, ...task }: McpTask) => {
   void authorizationKey;
-
-  return task;
+  const { error, inputRequests, pollIntervalMs, result, ttlMs, ...rest } = task;
+  void error;
+  void inputRequests;
+  void result;
+  return {
+    ...rest,
+    ...(pollIntervalMs === undefined ? {} : { pollInterval: pollIntervalMs }),
+    ttl: ttlMs,
+  };
 };

@@ -95,6 +95,7 @@ const post = (
       body: JSON.stringify(body),
       headers: {
         "content-type": "application/json",
+        "mcp-protocol-version": "2025-06-18",
         ...(sessionId === undefined ? {} : { "mcp-session-id": sessionId }),
       },
       method: "POST",

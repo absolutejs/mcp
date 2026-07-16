@@ -44,10 +44,15 @@ export {
   type McpClient,
   type McpClientOptions,
   type McpInitializeResult,
+  type McpRemoteTask,
   type McpRemoteTool,
 } from "./client";
 export * from "./oauth";
-export { dispatchMcp, type McpDispatchContext } from "./dispatch";
+export {
+  dispatchMcp,
+  MCP_LATEST_PROTOCOL_VERSION,
+  type McpDispatchContext,
+} from "./dispatch";
 export {
   FEEDBACK_INSTRUCTIONS,
   feedbackTools,
@@ -79,6 +84,7 @@ export type {
   McpElicitationRequest,
   McpElicitBus,
   McpElicitResult,
+  McpFormElicitationRequest,
   McpSessionStore,
   McpAuthResult,
   McpCallGate,
@@ -105,4 +111,5 @@ export type {
   McpToolRegistry,
   McpToolResult,
   McpToolReturn,
+  McpUrlElicitationRequest,
 } from "./types";

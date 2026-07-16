@@ -33,11 +33,19 @@ import { publicMcpTask } from "./tasks";
  *  Only elicitation uses it; without it the dispatcher is exactly as stateless
  *  as it was. */
 export type McpDispatchContext = {
+  protocolVersion?: string;
+  requestSignal?: AbortSignal;
   sessionId?: string | null;
   sessions?: SessionRegistry;
 };
 
-const DEFAULT_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
+export const MCP_LATEST_PROTOCOL_VERSION = "2025-11-25" as const;
+const DEFAULT_PROTOCOLS = [
+  MCP_LATEST_PROTOCOL_VERSION,
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+];
 const DEFAULT_RESOURCE_MIME = "text/markdown";
 const DEFAULT_LIST_PAGE_SIZE = 50;
 
@@ -123,10 +131,17 @@ const normalizeResult = (value: McpToolReturn): McpToolResult => {
 
 /** Did the client declare `capabilities.elicitation`? Only then may we ask its
  *  user anything. */
-const clientCanElicit = (params: unknown) => {
-  if (!isRecord(params) || !isRecord(params.capabilities)) return false;
-
-  return isRecord(params.capabilities.elicitation);
+const clientElicitation = (params: unknown) => {
+  if (!isRecord(params) || !isRecord(params.capabilities)) {
+    return { form: false, url: false };
+  }
+  const elicitation = params.capabilities.elicitation;
+  if (!isRecord(elicitation)) return { form: false, url: false };
+  // The empty legacy capability means form mode only.
+  return {
+    form: Object.keys(elicitation).length === 0 || isRecord(elicitation.form),
+    url: isRecord(elicitation.url),
+  };
 };
 
 const initialize = async <Caller>(
@@ -136,11 +151,20 @@ const initialize = async <Caller>(
   context: McpDispatchContext,
 ) => {
   const supported = config.supportedProtocols ?? DEFAULT_PROTOCOLS;
+  const protocolVersion = negotiateProtocol(supported, params);
   const capabilities: Record<string, unknown> = {
     tools: { listChanged: false },
   };
   if (config.tasks !== undefined) {
-    capabilities.extensions = { "io.modelcontextprotocol/tasks": {} };
+    if (protocolVersion === MCP_LATEST_PROTOCOL_VERSION) {
+      capabilities.tasks = {
+        cancel: {},
+        list: {},
+        requests: { tools: { call: {} } },
+      };
+    } else {
+      capabilities.extensions = { "io.modelcontextprotocol/tasks": {} };
+    }
   }
   if (config.prompts) capabilities.prompts = { listChanged: false };
   if (config.resources) {
@@ -152,7 +176,7 @@ const initialize = async <Caller>(
     ...(config.instructions === undefined
       ? {}
       : { instructions: config.instructions }),
-    protocolVersion: negotiateProtocol(supported, params),
+    protocolVersion,
     serverInfo: config.serverInfo,
   });
 
@@ -160,7 +184,11 @@ const initialize = async <Caller>(
   // elicitation find the call that is waiting for it. No elicitation, no
   // session, no state.
   if (!config.elicitation?.enabled || !context.sessions) return response;
-  const sessionId = await context.sessions.create(clientCanElicit(params));
+  const elicitation = clientElicitation(params);
+  const sessionId = await context.sessions.create(
+    elicitation.form || elicitation.url,
+    elicitation.url,
+  );
   response.headers.set("Mcp-Session-Id", sessionId);
 
   return response;
@@ -172,6 +200,7 @@ const toolsList = async <Caller>(
   scopes: string[],
   id: JsonRpcId,
   params: unknown,
+  protocolVersion?: string,
 ) => {
   const tools = await config.tools({ caller, meta: {} });
   const visible = Object.entries(tools)
@@ -188,6 +217,10 @@ const toolsList = async <Caller>(
       ...(tool.outputSchema === undefined
         ? {}
         : { outputSchema: tool.outputSchema }),
+      ...(protocolVersion === MCP_LATEST_PROTOCOL_VERSION &&
+      tool.taskSupport !== undefined
+        ? { execution: { taskSupport: tool.taskSupport } }
+        : {}),
     }));
   const { items, nextCursor } = paginate(
     visible,
@@ -209,6 +242,7 @@ const errorResult = (id: JsonRpcId, text: string) =>
  *  branch on transport. */
 const noElicit: McpToolCallContext = {
   canElicit: false,
+  canElicitUrl: false,
   elicit: () => Promise.resolve<McpElicitResult>({ action: "unsupported" }),
 };
 
@@ -344,6 +378,7 @@ const toolsCallStreaming = <Caller>(
   tool: McpTool,
   sessions: SessionRegistry,
   canElicit: boolean,
+  canElicitUrl: boolean,
 ) => {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -359,8 +394,30 @@ const toolsCallStreaming = <Caller>(
       };
       const context: McpToolCallContext = {
         canElicit,
+        canElicitUrl,
         elicit: async (request) => {
           if (!canElicit) return { action: "unsupported" };
+          if (request.mode === "url") {
+            if (!canElicitUrl) return { action: "unsupported" };
+            let url: URL;
+            try {
+              url = new URL(request.url);
+            } catch {
+              throw new Error("URL elicitation requires a valid URL");
+            }
+            const localDevelopment =
+              url.protocol === "http:" &&
+              (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+            if (
+              (url.protocol !== "https:" && !localDevelopment) ||
+              url.username !== "" ||
+              url.password !== ""
+            ) {
+              throw new Error(
+                "URL elicitation requires HTTPS without embedded credentials",
+              );
+            }
+          }
           const pending = sessions.startElicit(request);
           send({
             id: pending.id,
@@ -428,11 +485,34 @@ const toolsCall = async <Caller>(
   }
 
   const tasks = config.tasks;
-  if (
+  const nativeTasks = context.protocolVersion === MCP_LATEST_PROTOCOL_VERSION;
+  const requestedTaskParams = isRecord(params.task) ? params.task : undefined;
+  const requestedTask = requestedTaskParams !== undefined;
+  const taskSupport = tool.taskSupport ?? "forbidden";
+  if (nativeTasks && requestedTask && tasks === undefined) {
+    return rpcError(id, JSONRPC_METHOD_NOT_FOUND, "Tasks are not configured");
+  }
+  if (nativeTasks && requestedTask && taskSupport === "forbidden") {
+    return rpcError(
+      id,
+      JSONRPC_METHOD_NOT_FOUND,
+      "Tool does not support task execution",
+    );
+  }
+  if (nativeTasks && !requestedTask && taskSupport === "required") {
+    return rpcError(
+      id,
+      JSONRPC_METHOD_NOT_FOUND,
+      "Tool requires task execution",
+    );
+  }
+  const shouldCreateTask =
     tasks !== undefined &&
-    (await tasks.shouldCreate({ args, caller, name }))
-  ) {
-    if (!supportsTasks(params)) {
+    (nativeTasks
+      ? requestedTask && taskSupport !== "forbidden"
+      : await tasks.shouldCreate({ args, caller, name }));
+  if (tasks !== undefined && shouldCreateTask) {
+    if (!nativeTasks && !supportsTasks(params)) {
       return rpcError(
         id,
         JSONRPC_MISSING_REQUIRED_CLIENT_CAPABILITY,
@@ -445,6 +525,12 @@ const toolsCall = async <Caller>(
       );
     }
     const createdAt = new Date().toISOString();
+    const requestedTtl =
+      requestedTaskParams !== undefined &&
+      typeof requestedTaskParams.ttl === "number" &&
+      requestedTaskParams.ttl >= 0
+        ? requestedTaskParams.ttl
+        : undefined;
     const task = {
       authorizationKey: await tasks.authorizationKey(caller),
       createdAt,
@@ -452,7 +538,7 @@ const toolsCall = async <Caller>(
       pollIntervalMs: tasks.pollIntervalMs,
       status: "working" as const,
       taskId: crypto.randomUUID(),
-      ttlMs: tasks.ttlMs ?? null,
+      ttlMs: tasks.ttlMs ?? requestedTtl ?? null,
     };
     await tasks.store.save(task);
     setTimeout(() => {
@@ -464,7 +550,7 @@ const toolsCall = async <Caller>(
               : { content: [], isError: true };
           await tasks.store.update(task.taskId, {
             result,
-            status: "completed",
+            status: result.isError === true ? "failed" : "completed",
           });
         })
         .catch(async (error) => {
@@ -478,7 +564,9 @@ const toolsCall = async <Caller>(
         });
     }, 0);
 
-    return rpcResult(id, { ...publicMcpTask(task), resultType: "task" });
+    return nativeTasks
+      ? rpcResult(id, { task: publicMcpTask(task) })
+      : rpcResult(id, { ...publicMcpTask(task), resultType: "task" });
   }
 
   // A tool that may ask the user something answers over SSE — but only when
@@ -505,6 +593,7 @@ const toolsCall = async <Caller>(
       tool,
       sessions,
       session.canElicit,
+      session.canElicitUrl ?? false,
     );
   }
 
@@ -559,12 +648,105 @@ const tasksGet = async <Caller>(
   caller: Caller,
   id: JsonRpcId,
   params: unknown,
+  native: boolean,
 ) => {
   const task = await authorizedTask(config, caller, params);
   if (task === null)
     return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
 
-  return rpcResult(id, { ...publicMcpTask(task), resultType: "complete" });
+  return rpcResult(
+    id,
+    native
+      ? publicMcpTask(task)
+      : { ...publicMcpTask(task), resultType: "complete" },
+  );
+};
+
+const tasksResult = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  params: unknown,
+  signal?: AbortSignal,
+) => {
+  let task = await authorizedTask(config, caller, params);
+  if (task === null)
+    return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
+  while (task.status === "working" || task.status === "input_required") {
+    if (signal?.aborted) {
+      return rpcError(
+        id,
+        JSONRPC_INTERNAL_ERROR,
+        "Task result request cancelled",
+      );
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, task?.pollIntervalMs ?? 100),
+    );
+    task = await authorizedTask(config, caller, params);
+    if (task === null)
+      return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
+  }
+  if (task.error !== undefined) {
+    return rpcError(
+      id,
+      typeof task.error.code === "number"
+        ? task.error.code
+        : JSONRPC_INTERNAL_ERROR,
+      typeof task.error.message === "string"
+        ? task.error.message
+        : "Task failed",
+    );
+  }
+  const result = task.result ?? {
+    content: [],
+    isError: task.status !== "completed",
+  };
+  return rpcResult(id, {
+    ...result,
+    _meta: {
+      ...(isRecord(result._meta) ? result._meta : {}),
+      "io.modelcontextprotocol/related-task": { taskId: task.taskId },
+    },
+  });
+};
+
+const tasksList = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  params: unknown,
+) => {
+  if (config.tasks === undefined) {
+    return rpcError(id, JSONRPC_METHOD_NOT_FOUND, "Tasks are not configured");
+  }
+  const authorizationKey = await config.tasks.authorizationKey(caller);
+  let offset = 0;
+  if (isRecord(params) && params.cursor !== undefined) {
+    if (typeof params.cursor !== "string") {
+      return rpcError(id, JSONRPC_INVALID_PARAMS, "Invalid task cursor");
+    }
+    try {
+      offset = Number.parseInt(atob(params.cursor), 10);
+    } catch {
+      offset = -1;
+    }
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      return rpcError(id, JSONRPC_INVALID_PARAMS, "Invalid task cursor");
+    }
+  }
+  const pageSize = Math.min(100, Math.max(1, config.tasks.listPageSize ?? 50));
+  const fetched = await config.tasks.store.list(authorizationKey, {
+    limit: pageSize + 1,
+    offset,
+  });
+  const items = fetched.slice(0, pageSize);
+  const nextCursor =
+    fetched.length > pageSize ? encodeCursor(offset + pageSize) : undefined;
+  return rpcResult(id, {
+    tasks: items.map(publicMcpTask),
+    ...(nextCursor === undefined ? {} : { nextCursor }),
+  });
 };
 
 const tasksUpdate = async <Caller>(
@@ -595,13 +777,22 @@ const tasksCancel = async <Caller>(
   caller: Caller,
   id: JsonRpcId,
   params: unknown,
+  native: boolean,
 ) => {
   const task = await authorizedTask(config, caller, params);
   if (task === null)
     return rpcError(id, JSONRPC_INVALID_PARAMS, "Unknown task");
+  if (["cancelled", "completed", "failed"].includes(task.status)) {
+    return rpcError(id, JSONRPC_INVALID_PARAMS, "Task is already terminal");
+  }
   await config.tasks?.store.cancel(task.taskId);
-
-  return rpcResult(id, { resultType: "complete" });
+  const cancelled = await config.tasks?.store.get(task.taskId);
+  return rpcResult(
+    id,
+    native && cancelled !== null && cancelled !== undefined
+      ? publicMcpTask(cancelled)
+      : { resultType: "complete" },
+  );
 };
 
 const promptsList = <Caller>(
@@ -719,8 +910,11 @@ const elicitAnswer = async (
   const result = isRecord(message.result) ? message.result : null;
   const action = result?.action;
   const answer: McpElicitResult =
-    action === "accept" && isRecord(result?.content)
-      ? { action: "accept", content: result.content }
+    action === "accept"
+      ? {
+          action: "accept",
+          content: isRecord(result?.content) ? result.content : {},
+        }
       : action === "decline"
         ? { action: "decline" }
         : { action: "cancel" };
@@ -754,6 +948,9 @@ export const dispatchMcp = async <Caller>(
   // A body with an id but NO method is a RESPONSE to something we asked.
   if (!("method" in message)) return elicitAnswer(message, context);
   const id = idOf(message);
+  // Direct dispatcher consumers predate transport-level version headers; keep
+  // their legacy semantics unless they explicitly provide a negotiated version.
+  const protocolVersion = context.protocolVersion ?? "2025-06-18";
   const method = typeof message.method === "string" ? message.method : "";
   const { params } = message;
   if (method === "initialize") {
@@ -772,14 +969,45 @@ export const dispatchMcp = async <Caller>(
   }
   if (method === "ping") return rpcResult(id, {});
   if (method === "tools/list") {
-    return toolsList(config, caller, scopes, id, params);
+    return toolsList(config, caller, scopes, id, params, protocolVersion);
   }
   if (method === "tools/call") {
-    return toolsCall(config, caller, scopes, id, params, context);
+    return toolsCall(config, caller, scopes, id, params, {
+      ...context,
+      protocolVersion,
+    });
   }
-  if (method === "tasks/get") return tasksGet(config, caller, id, params);
-  if (method === "tasks/update") return tasksUpdate(config, caller, id, params);
-  if (method === "tasks/cancel") return tasksCancel(config, caller, id, params);
+  if (method === "tasks/get")
+    return tasksGet(
+      config,
+      caller,
+      id,
+      params,
+      protocolVersion === MCP_LATEST_PROTOCOL_VERSION,
+    );
+  if (
+    method === "tasks/result" &&
+    protocolVersion === MCP_LATEST_PROTOCOL_VERSION
+  )
+    return tasksResult(config, caller, id, params, context.requestSignal);
+  if (
+    method === "tasks/list" &&
+    protocolVersion === MCP_LATEST_PROTOCOL_VERSION
+  )
+    return tasksList(config, caller, id, params);
+  if (
+    method === "tasks/update" &&
+    protocolVersion !== MCP_LATEST_PROTOCOL_VERSION
+  )
+    return tasksUpdate(config, caller, id, params);
+  if (method === "tasks/cancel")
+    return tasksCancel(
+      config,
+      caller,
+      id,
+      params,
+      protocolVersion === MCP_LATEST_PROTOCOL_VERSION,
+    );
   if (method === "prompts/list") return promptsList(config, id, params);
   if (method === "prompts/get") return promptsGet(config, caller, id, params);
   if (method === "resources/list") {

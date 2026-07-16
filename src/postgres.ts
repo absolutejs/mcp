@@ -35,10 +35,12 @@ CREATE INDEX IF NOT EXISTS tasks_expiry_idx ON ${ns}.tasks (expires_at) WHERE ex
 CREATE TABLE IF NOT EXISTS ${ns}.sessions (
   session_id text PRIMARY KEY,
   can_elicit boolean NOT NULL,
+  can_elicit_url boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL
 );
+ALTER TABLE ${ns}.sessions ADD COLUMN IF NOT EXISTS can_elicit_url boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON ${ns}.sessions (expires_at);`;
 };
 
@@ -73,6 +75,13 @@ export const createPostgresMcpTaskStore = ({
           [taskId, now().toISOString()],
         )
       ).rows[0]?.data ?? null,
+    list: async (authorizationKey, { limit, offset }) =>
+      (
+        await client.query<TaskRow>(
+          `SELECT data FROM ${ns}.tasks WHERE authorization_key = $1 AND (expires_at IS NULL OR expires_at > $2::timestamptz) ORDER BY updated_at DESC LIMIT $3 OFFSET $4`,
+          [authorizationKey, now().toISOString(), limit, offset],
+        )
+      ).rows.map((row) => row.data),
     save: async (task) => {
       const expiresAt =
         task.ttlMs === null
@@ -126,14 +135,15 @@ export const createPostgresMcpSessionStore = ({
 }): McpSessionStore => {
   const ns = namespaceOf(namespace);
   return {
-    create: async ({ canElicit }) => {
+    create: async ({ canElicit, canElicitUrl }) => {
       const id = crypto.randomUUID();
       const current = now();
       await client.query(
-        `INSERT INTO ${ns}.sessions (session_id, can_elicit, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3::timestamptz, $3::timestamptz, $4::timestamptz)`,
+        `INSERT INTO ${ns}.sessions (session_id, can_elicit, can_elicit_url, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3, $4::timestamptz, $4::timestamptz, $5::timestamptz)`,
         [
           id,
           canElicit,
+          canElicitUrl ?? false,
           current.toISOString(),
           new Date(current.getTime() + ttlMs).toISOString(),
         ],
@@ -147,8 +157,11 @@ export const createPostgresMcpSessionStore = ({
     },
     get: async (id) => {
       const current = now();
-      const result = await client.query<{ can_elicit: boolean }>(
-        `UPDATE ${ns}.sessions SET last_seen_at = $2::timestamptz, expires_at = $3::timestamptz WHERE session_id = $1 AND expires_at > $2::timestamptz RETURNING can_elicit`,
+      const result = await client.query<{
+        can_elicit: boolean;
+        can_elicit_url: boolean;
+      }>(
+        `UPDATE ${ns}.sessions SET last_seen_at = $2::timestamptz, expires_at = $3::timestamptz WHERE session_id = $1 AND expires_at > $2::timestamptz RETURNING can_elicit, can_elicit_url`,
         [
           id,
           current.toISOString(),
@@ -156,7 +169,12 @@ export const createPostgresMcpSessionStore = ({
         ],
       );
       const row = result.rows[0];
-      return row === undefined ? null : { canElicit: row.can_elicit };
+      return row === undefined
+        ? null
+        : {
+            canElicit: row.can_elicit,
+            canElicitUrl: row.can_elicit_url,
+          };
     },
   };
 };

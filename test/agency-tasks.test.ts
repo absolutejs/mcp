@@ -64,6 +64,7 @@ const config = (
         description: "send",
         handler: () => "sent",
         inputSchema: { type: "object" },
+        taskSupport: "optional",
       },
     }),
     ...over,
@@ -261,5 +262,110 @@ describe("SEP-2663 task extension", () => {
       ),
     );
     expect((response.error as Record<string, unknown>).code).toBe(-32003);
+  });
+});
+
+describe("MCP 2025-11-25 native tasks", () => {
+  const native = { protocolVersion: "2025-11-25" };
+
+  test("advertises native capabilities and tool-level execution support", async () => {
+    const { server } = config(allowAllPolicy(), {
+      tasks: {
+        authorizationKey: (caller) => caller.id,
+        shouldCreate: () => false,
+        store: createMemoryMcpTaskStore(),
+      },
+    });
+    const initialized = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-1" },
+        ["messages:send"],
+        rpc("initialize", { capabilities: {}, protocolVersion: "2025-11-25" }),
+        native,
+      ),
+    );
+    expect(initialized.result).toMatchObject({
+      capabilities: {
+        tasks: { cancel: {}, list: {}, requests: { tools: { call: {} } } },
+      },
+      protocolVersion: "2025-11-25",
+    });
+    const listed = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-1" },
+        ["messages:send"],
+        rpc("tools/list", {}),
+        native,
+      ),
+    );
+    expect(listed.result).toMatchObject({
+      tools: [{ execution: { taskSupport: "optional" }, name: "send" }],
+    });
+  });
+
+  test("creates, lists, polls, and retrieves an authorization-bound result", async () => {
+    const store = createMemoryMcpTaskStore();
+    const { server } = config(allowAllPolicy(), {
+      tasks: {
+        authorizationKey: (caller) => caller.id,
+        pollIntervalMs: 1,
+        shouldCreate: () => false,
+        store,
+      },
+    });
+    const created = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-1" },
+        ["messages:send"],
+        rpc("tools/call", { name: "send", task: { ttl: 60_000 } }),
+        native,
+      ),
+    );
+    const taskId = (created.result as { task: { taskId: string } }).task.taskId;
+    expect(created.result).toMatchObject({
+      task: { status: "working", taskId, ttl: 60_000 },
+    });
+    const listed = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-1" },
+        [],
+        rpc("tasks/list", {}),
+        native,
+      ),
+    );
+    expect(listed.result).toMatchObject({ tasks: [{ taskId }] });
+    expect(JSON.stringify(listed.result)).not.toContain("authorizationKey");
+    expect(JSON.stringify(listed.result)).not.toContain('"result"');
+
+    const result = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-1" },
+        [],
+        rpc("tasks/result", { taskId }),
+        native,
+      ),
+    );
+    expect(result.result).toMatchObject({
+      _meta: {
+        "io.modelcontextprotocol/related-task": { taskId },
+      },
+      content: [{ text: "sent", type: "text" }],
+      isError: false,
+    });
+    const hidden = await body(
+      await dispatchMcp(
+        server,
+        { id: "user-2" },
+        [],
+        rpc("tasks/list", {}),
+        native,
+      ),
+    );
+    expect(hidden.result).toMatchObject({ tasks: [] });
   });
 });

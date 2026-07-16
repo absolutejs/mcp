@@ -4,6 +4,7 @@ import { feedbackTools, FEEDBACK_INSTRUCTIONS } from "../src/feedback";
 import { createMcpHandler } from "../src/handler";
 import type {
   McpElicitResult,
+  McpElicitationRequest,
   McpServerConfig,
   McpToolRegistry,
 } from "../src/types";
@@ -32,6 +33,25 @@ const bookingTools = (): McpToolRegistry => ({
       if (answer.action !== "accept") return "Dropped it.";
 
       return `Booked for ${String(answer.content.people)}.`;
+    },
+    inputSchema: { type: "object" },
+    mayElicit: true,
+  },
+  connect_calendar: {
+    description:
+      "Connect a calendar without exposing credentials to the MCP client.",
+    handler: async (_args, context) => {
+      if (!context.canElicitUrl)
+        return "This client cannot open a secure flow.";
+      const answer = await context.elicit({
+        elicitationId: "calendar-connect-1",
+        message: "Connect your calendar in the secure browser flow.",
+        mode: "url",
+        url: "https://example.test/connect/calendar",
+      });
+      return answer.action === "accept"
+        ? "Calendar flow opened."
+        : "Calendar not connected.";
     },
     inputSchema: { type: "object" },
     mayElicit: true,
@@ -72,9 +92,9 @@ const feedbackStore = {
  *  semantics, no network. The client's answer to an elicitation arrives as its
  *  own POST, exactly as it would over the wire. */
 const connect = (
-  onElicit?: (req: {
-    message: string;
-  }) => McpElicitResult | Promise<McpElicitResult>,
+  onElicit?: (
+    req: McpElicitationRequest,
+  ) => McpElicitResult | Promise<McpElicitResult>,
 ) => {
   const config = serverConfig();
   const handler = createMcpHandler(config);
@@ -127,6 +147,23 @@ describe("elicitation", () => {
     await client.initialize();
     const result = await client.callTool("plain");
     expect(JSON.stringify(result.content)).toContain("fine");
+  });
+
+  test("URL mode keeps third-party credentials out of the MCP response", async () => {
+    let request: McpElicitationRequest | undefined;
+    const client = connect((value) => {
+      request = value;
+      return { action: "accept", content: { mustNotCrossTheWire: "secret" } };
+    });
+    await client.initialize();
+    const result = await client.callTool("connect_calendar");
+    expect(request).toMatchObject({
+      elicitationId: "calendar-connect-1",
+      mode: "url",
+      url: "https://example.test/connect/calendar",
+    });
+    expect(JSON.stringify(result.content)).toContain("Calendar flow opened");
+    expect(JSON.stringify(result)).not.toContain("mustNotCrossTheWire");
   });
 });
 
