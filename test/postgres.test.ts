@@ -24,8 +24,12 @@ describe("MCP PostgreSQL stores", () => {
     const store = createPostgresMcpTaskStore({ client });
     await store.cancel("task-1");
     await store.update("task-1", { status: "completed" });
-    expect(calls[0]).toContain("status NOT IN ('cancelled','completed','failed')");
-    expect(calls[1]).toContain("status NOT IN ('cancelled','completed','failed')");
+    expect(calls[0]).toContain(
+      "status NOT IN ('cancelled','completed','failed')",
+    );
+    expect(calls[1]).toContain(
+      "status NOT IN ('cancelled','completed','failed')",
+    );
   });
 
   test("touches and extends only unexpired sessions", async () => {

@@ -99,8 +99,13 @@ export type McpSessionStore = {
  *  routing. Omit it and you must run a single instance (or pin sessions). */
 export type McpElicitBus = {
   /** An answer nobody here was waiting for — someone else might be. */
-  publish: (answer: McpElicitAnswer) => void;
-  subscribe: (handler: (answer: McpElicitAnswer) => void) => void;
+  publish: (answer: McpElicitAnswer) => void | Promise<void>;
+  subscribe: (
+    handler: (answer: McpElicitAnswer) => void,
+  ) =>
+    | void
+    | (() => void | Promise<void>)
+    | Promise<void | (() => void | Promise<void>)>;
 };
 
 /** Passed to a tool handler as its second argument. Ignore it and nothing

@@ -709,7 +709,7 @@ const resourcesRead = async <Caller>(
  *  own POST whose body is a JSON-RPC RESPONSE (an id, a result, no method) —
  *  hand it to the tool call that is blocked waiting for it. The transport says
  *  a response body gets 202 with no content, whether or not we recognised it. */
-const elicitAnswer = (
+const elicitAnswer = async (
   message: Record<string, unknown>,
   context: McpDispatchContext,
 ) => {
@@ -726,7 +726,7 @@ const elicitAnswer = (
   // Resolves the waiting call if it's ours; otherwise the registry puts it on
   // the bus so the instance that ASKED can resolve it. Either way the client
   // gets its 202 — an answer we can't place is not the client's problem.
-  context.sessions.resolveElicit({
+  await context.sessions.resolveElicit({
     requestId,
     result: answer,
     sessionId: context.sessionId ?? null,

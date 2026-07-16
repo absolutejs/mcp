@@ -262,6 +262,32 @@ elicitation is safe behind a load balancer with **no sticky routing** — there 
 a test for exactly that: instance A asks, the answer lands on B, the bus carries
 it back, and A's call finishes.
 
+AbsoluteJS already ships both production transports. PostgreSQL is the default;
+Redis is an optional at-most-once fan-out optimization:
+
+```ts
+import { createPostgresChannelBus } from "@absolutejs/sync-bus-pg";
+import type { McpElicitAnswer } from "@absolutejs/mcp";
+
+const bus = createPostgresChannelBus<McpElicitAnswer>({
+  sql,
+  channel: "absolutejs_mcp_elicitation",
+  spill: "always",
+});
+
+const config = {
+  // ...
+  elicitation: {
+    enabled: true,
+    store: createPostgresMcpSessionStore({ sql }),
+    bus,
+  },
+};
+```
+
+The channel is only coordination: durable jobs and side effects belong in
+`@absolutejs/queue` / `@absolutejs/execution`, not Redis pub/sub or NOTIFY.
+
 Consuming a server that elicits? Pass `onElicit` to `createMcpClient` — that is
 what declares the capability, and what the package uses to answer. Omit it and
 servers are told you cannot ask anyone.

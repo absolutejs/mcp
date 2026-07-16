@@ -93,6 +93,8 @@ export const createSessionRegistry = (options?: {
   // the store does. The bus is what carries an answer TO it.
   const pending = new Map<string, Pending>();
 
+  let unsubscribe: void | (() => void | Promise<void>);
+
   /** Hand an answer to the call waiting for it, if that call is ours. */
   const resolveLocal = (answer: McpElicitAnswer) => {
     const waiting = pending.get(answer.requestId);
@@ -105,25 +107,51 @@ export const createSessionRegistry = (options?: {
   };
 
   // An answer another instance couldn't place — it may be ours.
-  options?.bus?.subscribe((answer) => {
-    resolveLocal(answer);
-  });
+  const ready = options?.bus
+    ? Promise.resolve(
+        options.bus.subscribe((answer) => {
+          resolveLocal(answer);
+        }),
+      ).then((stop) => {
+        unsubscribe = stop;
+      })
+    : Promise.resolve();
 
   return {
-    create: async (canElicit: boolean) => await store.create({ canElicit }),
+    ready,
+
+    close: async () => {
+      await ready;
+      await unsubscribe?.();
+      pending.forEach(({ resolve, timer }) => {
+        clearTimeout(timer);
+        resolve({ action: "cancel" });
+      });
+      pending.clear();
+    },
+
+    create: async (canElicit: boolean) => {
+      await ready;
+      return await store.create({ canElicit });
+    },
 
     drop: async (id: string) => {
+      await ready;
       await store.drop(id);
     },
 
-    get: async (id: string | null) => (id ? await store.get(id) : null),
+    get: async (id: string | null) => {
+      await ready;
+      return id ? await store.get(id) : null;
+    },
 
     /** The client answered. If the call that asked is running HERE, resolve it.
      *  If not, put the answer on the bus so the instance that is waiting can —
      *  the answer must find the promise, and the promise cannot move. */
-    resolveElicit: (answer: McpElicitAnswer) => {
+    resolveElicit: async (answer: McpElicitAnswer) => {
+      await ready;
       if (resolveLocal(answer)) return true;
-      options?.bus?.publish(answer);
+      await options?.bus?.publish(answer);
 
       return false;
     },
