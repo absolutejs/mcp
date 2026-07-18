@@ -108,6 +108,7 @@ const server = new Elysia().use(
     // access-token checks; add your own (billing, role, MFA) on top.
     authorize: async (request) => {
       const token = await verifyBearer({
+        audience: "https://your.app/mcp",
         request,
         issuer: "https://your.app",
         requiredScope: "mcp",

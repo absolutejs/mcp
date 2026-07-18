@@ -15,6 +15,8 @@ export type BearerVerifier = (
 ) => Promise<VerifiedJwt | undefined> | VerifiedJwt | undefined;
 
 export type VerifyBearerConfig = {
+  /** Require the access token to name this protected resource in `aud`. */
+  audience?: string;
   issuer: string;
   request: Request;
   /** Verify the JWT signature and decode it (e.g. `@absolutejs/auth`'s
@@ -32,13 +34,13 @@ export type BearerResult =
     };
 
 /** Verify the `Authorization: Bearer` token: signature (via your `verify`),
- *  `token_use: access`, issuer, expiry, the required scope, and a subject.
+ *  `token_use: access`, issuer, optional audience, expiry, required scope, and a subject.
  *  Returns the decoded payload + parsed scopes + subject, or a reason string.
  *  The reason is safe to surface in the 401 (never why the signature failed). */
 export const verifyBearer = async (
   config: VerifyBearerConfig,
 ): Promise<BearerResult> => {
-  const { issuer, request, verify, requiredScope } = config;
+  const { audience, issuer, request, verify, requiredScope } = config;
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return { error: "Missing bearer token" };
   const verified = await verify(header.slice("Bearer ".length));
@@ -47,6 +49,12 @@ export const verifyBearer = async (
   const { payload } = verified;
   if (payload.token_use !== "access") return { error: "Not an access token" };
   if (payload.iss !== issuer) return { error: "Wrong issuer" };
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (
+    audience !== undefined &&
+    !audiences.some((candidate) => candidate === audience)
+  )
+    return { error: "Wrong audience" };
   const expires = typeof payload.exp === "number" ? payload.exp : 0;
   if (expires * MS_PER_SECOND <= Date.now()) return { error: "Token expired" };
   const scopes =

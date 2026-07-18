@@ -320,10 +320,12 @@ describe("verifyBearer", () => {
 
   test("accepts a well-formed access token and parses scopes + subject", async () => {
     const result = await verifyBearer({
+      audience: `${issuer}/mcp`,
       issuer,
       request: requestWith("t"),
       requiredScope: "mcp",
       verify: verify({
+        aud: ["https://other.test", `${issuer}/mcp`],
         exp: future,
         iss: issuer,
         scope: "openid mcp",
@@ -333,6 +335,7 @@ describe("verifyBearer", () => {
     });
     expect(result).toEqual({
       payload: {
+        aud: ["https://other.test", `${issuer}/mcp`],
         exp: future,
         iss: issuer,
         scope: "openid mcp",
@@ -395,5 +398,22 @@ describe("verifyBearer", () => {
       }),
     });
     expect(noScope).toEqual({ error: "Token lacks the mcp:admin scope" });
+  });
+
+  test("rejects an access token issued for another protected resource", async () => {
+    const result = await verifyBearer({
+      audience: `${issuer}/mcp`,
+      issuer,
+      request: requestWith("t"),
+      verify: verify({
+        aud: `${issuer}/api`,
+        exp: future,
+        iss: issuer,
+        sub: "u1",
+        token_use: "access",
+      }),
+    });
+
+    expect(result).toEqual({ error: "Wrong audience" });
   });
 });
