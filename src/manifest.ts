@@ -9,6 +9,16 @@ import type { McpServerConfig } from "./types";
  * that serves OTHER packages' manifest tools over MCP. */
 export const manifest = defineManifest<McpServerConfig<unknown>>()({
   contract: 2,
+  discovery: {
+    audiences: ["agent-hosts", "mcp-clients"],
+    intents: [
+      "serve MCP tools",
+      "connect an MCP client",
+      "run durable MCP tasks",
+    ],
+    keywords: ["agents", "mcp", "tools", "oauth", "tasks", "elicitation"],
+    protocols: ["MCP 2025-11-25", "OAuth 2.0"],
+  },
   identity: {
     accent: "#0ea5e9",
     category: "ai",
