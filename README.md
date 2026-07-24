@@ -21,6 +21,12 @@ action request; allowed calls execute through a short-lived single-use lease and
 produce a receipt. Requestable denials return an `absolute.action_decision`
 payload containing the action id for an approval workflow.
 
+Agency is a required host peer (`>=0.7.1 <0.8.0`) and is externalized from the
+MCP build. This guarantees that every transport uses the host's one action
+ledger instead of embedding a private enforcement runtime. The package tests
+against exactly `0.7.1`; a new Agency minor requires an explicit compatibility
+release.
+
 ```ts
 import { createAgency, createMemoryAgencyStore } from "@absolutejs/agency";
 
