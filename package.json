@@ -13,7 +13,7 @@
     "elysia": ">=1.1.0"
   },
   "dependencies": {
-    "@absolutejs/manifest": "^0.6.0",
+    "@absolutejs/manifest": "^0.6.3",
     "@sinclair/typebox": "^0.34.0"
   },
   "license": "BUSL-1.1",
@@ -21,9 +21,15 @@
     "manifestContract": 2,
     "runtimePeers": {
       "@absolutejs/agency": {
+        "artifactImports": [
+          "@absolutejs/agency/authzen"
+        ],
         "range": ">=0.7.1 <0.8.0",
         "tested": "0.7.1",
-        "buildExternals": ["@absolutejs/agency", "@absolutejs/agency/*"]
+        "buildExternals": [
+          "@absolutejs/agency",
+          "@absolutejs/agency/*"
+        ]
       }
     }
   },
@@ -66,5 +72,5 @@
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.11.2"
+  "version": "0.11.3"
 }
