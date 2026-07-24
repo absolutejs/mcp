@@ -296,9 +296,11 @@ const runTool = async <Caller>(
       const currency = tool.authorization.spend
         ? valueAtPath(args, tool.authorization.spend.currencyField)
         : undefined;
-      const idempotencyKey = tool.authorization.idempotencyKeyField
-        ? valueAtPath(args, tool.authorization.idempotencyKeyField)
-        : undefined;
+      const idempotencyBinding = tool.authorization.idempotency;
+      const idempotencyKey =
+        idempotencyBinding?.mode === "field"
+          ? valueAtPath(args, idempotencyBinding.field)
+          : undefined;
       const requested = await agency.enforcement.request({
         ...actionInput,
         context: {

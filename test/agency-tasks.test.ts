@@ -53,7 +53,7 @@ const config = (
         authorization: {
           approval: "policy",
           effects: ["send", "external-network"],
-          idempotencyKeyField: "idempotencyKey",
+          idempotency: { field: "idempotencyKey", mode: "field" },
           requiredScopes: ["messages:send"],
           spend: {
             amountMinorField: "amountMinor",
