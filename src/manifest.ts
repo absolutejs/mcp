@@ -29,7 +29,9 @@ export const manifest = defineManifest<McpServerConfig<unknown>>()({
     tagline: "Let AI assistants connect to your site and use its tools.",
   },
   requires: {
-    peers: [{ name: "elysia", range: ">=1.1.0", reason: "plugin host" }],
+    peers: [
+      { name: "elysia", range: "^2.0.0-beta.6", reason: "plugin host" },
+    ],
   },
   settings: Type.Object({
     instructions: Type.Optional(
