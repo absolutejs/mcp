@@ -3,7 +3,7 @@
   "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry — OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
   "devDependencies": {
     "@absolutejs/agency": "0.7.1",
-    "@absolutejs/changelog": "^0.4.0",
+    "@absolutejs/changelog": "^0.5.1",
     "@types/bun": "latest",
     "elysia": "2.0.0-beta.6",
     "exact-mirror": "1.2.4",
