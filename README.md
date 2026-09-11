@@ -431,3 +431,5 @@ on the Change Date.
 ## Secure credit checkout
 
 `createCheckoutHandoffTool` and `createPurchaseStatusTool` provide account-bound credit checkout and recovery contracts. The issuer must bind server pricing and identity; route these tools through the commerce guard. Checkout is classified as `external_checkout`, so restricted and unverified channels cannot discover or execute it. Status works at zero credits. Never pass card data in tool input. See [host rules](docs/commerce-host-rules.md).
+
+`createBillingReportTools` binds billing status, paginated receipts, and bounded UTC usage reports to authenticated reader callbacks. These non-transactional tools remain available at zero balance. The shared billing projections discard payment/provider secrets and enforce reconciled usage breakdowns. `createBillingManagementTool` returns a fixed HTTPS browser page requiring normal browser authentication; because that page can initiate purchases, it retains `external_checkout` commerce classification. Never label a purchase-capable page informational to bypass host restrictions.

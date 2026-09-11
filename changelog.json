@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.16.0",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add account-bound billing status, paginated receipts, bounded usage and reviewed billing-management links"
+        }
+      ]
+    },
+    {
       "version": "0.15.1",
       "date": "2026-09-11",
       "changes": [
