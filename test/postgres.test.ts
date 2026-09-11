@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { mcpPostgresMigrations } from "../src/postgres";
 import { describe, expect, test } from "bun:test";
 import {
   createPostgresMcpSessionStore,
@@ -44,7 +46,19 @@ describe("MCP PostgreSQL stores", () => {
       client,
       now: () => new Date("2026-01-01T00:00:00Z"),
     });
-    expect(await store.get("session-1")).toEqual({ canElicit: true });
+    expect(await store.get("session-1")).toEqual({
+      canElicit: true,
+      canRenderUi: false,
+    });
     expect(calls[0]).toContain("expires_at >");
   });
+});
+
+test("Apps migration preserves the already-published schema journal digest", () => {
+  const entries = mcpPostgresMigrations();
+  expect(createHash("sha256").update(entries[0]!.sql).digest("hex")).toBe(
+    "1e1fc160ab7c5cf2747b963ae5d12198db5175300f6f89160d3d468f3a495280",
+  );
+  expect(entries[1]!.id).toBe("mcp@0.17.0");
+  expect(entries[1]!.sql).toContain("ADD COLUMN IF NOT EXISTS can_render_ui");
 });

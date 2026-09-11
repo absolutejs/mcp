@@ -48,7 +48,12 @@ export type SessionRegistry = ReturnType<typeof createSessionRegistry>;
 const createMemoryStore = (ttlMs: number): McpSessionStore => {
   const sessions = new Map<
     string,
-    { canElicit: boolean; canElicitUrl: boolean; lastSeen: number }
+    {
+      canElicit: boolean;
+      canElicitUrl: boolean;
+      canRenderUi: boolean;
+      lastSeen: number;
+    }
   >();
   let sinceSweep = 0;
 
@@ -67,6 +72,7 @@ const createMemoryStore = (ttlMs: number): McpSessionStore => {
       sweep();
       const id = crypto.randomUUID();
       sessions.set(id, {
+        canRenderUi: session.canRenderUi ?? false,
         canElicit: session.canElicit,
         canElicitUrl: session.canElicitUrl ?? false,
         lastSeen: Date.now(),
@@ -83,6 +89,7 @@ const createMemoryStore = (ttlMs: number): McpSessionStore => {
       session.lastSeen = Date.now();
 
       return {
+        canRenderUi: session.canRenderUi ?? false,
         canElicit: session.canElicit,
         canElicitUrl: session.canElicitUrl,
       };
@@ -140,9 +147,13 @@ export const createSessionRegistry = (options?: {
       pending.clear();
     },
 
-    create: async (canElicit: boolean, canElicitUrl = false) => {
+    create: async (
+      canElicit: boolean,
+      canElicitUrl = false,
+      canRenderUi = false,
+    ) => {
       await ready;
-      return await store.create({ canElicit, canElicitUrl });
+      return await store.create({ canElicit, canElicitUrl, canRenderUi });
     },
 
     drop: async (id: string) => {

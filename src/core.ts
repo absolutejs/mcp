@@ -38,19 +38,19 @@ export const primeMcpSessions = <Caller>(config: McpServerConfig<Caller>) => {
 };
 
 const registryFor = <Caller>(config: McpServerConfig<Caller>) => {
-  if (!config.elicitation?.enabled) return undefined;
+  if (!config.elicitation?.enabled && !config.apps) return undefined;
   const existing = registries.get(config);
   if (existing) return existing;
   const created = createSessionRegistry({
-    ...(config.elicitation.bus === undefined
+    ...(config.elicitation?.bus === undefined
       ? {}
-      : { bus: config.elicitation.bus }),
-    ...(config.elicitation.timeoutMs === undefined
+      : { bus: config.elicitation?.bus }),
+    ...(config.elicitation?.timeoutMs === undefined
       ? {}
-      : { elicitTimeoutMs: config.elicitation.timeoutMs }),
-    ...(config.elicitation.store === undefined
+      : { elicitTimeoutMs: config.elicitation?.timeoutMs }),
+    ...((config.elicitation?.store ?? config.apps?.store) === undefined
       ? {}
-      : { store: config.elicitation.store }),
+      : { store: config.elicitation?.store ?? config.apps?.store }),
   });
   registries.set(config, created);
 

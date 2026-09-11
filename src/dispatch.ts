@@ -1,3 +1,4 @@
+import { clientSupportsMcpApps, appResourceContent } from "./apps";
 import { evaluateCommerce, type CommerceDecision } from "./commerce";
 // The MCP method dispatcher. Pure and framework-free: given the server config,
 // a resolved caller, its scopes, and one decoded JSON-RPC message, it produces
@@ -168,10 +169,15 @@ const initialize = async <Caller>(
     }
   }
   if (config.prompts) capabilities.prompts = { listChanged: false };
-  if (config.resources) {
+  if (config.resources || config.apps) {
     capabilities.resources = { listChanged: false, subscribe: false };
   }
 
+  if (config.apps)
+    capabilities.extensions = {
+      ...(isRecord(capabilities.extensions) ? capabilities.extensions : {}),
+      "io.modelcontextprotocol/ui": {},
+    };
   const response = rpcResult(id, {
     capabilities,
     ...(config.instructions === undefined
@@ -184,11 +190,13 @@ const initialize = async <Caller>(
   // A session exists for ONE reason: to let the client's answer to an
   // elicitation find the call that is waiting for it. No elicitation, no
   // session, no state.
-  if (!config.elicitation?.enabled || !context.sessions) return response;
+  if ((!config.elicitation?.enabled && !config.apps) || !context.sessions)
+    return response;
   const elicitation = clientElicitation(params);
   const sessionId = await context.sessions.create(
     elicitation.form || elicitation.url,
     elicitation.url,
+    Boolean(config.apps) && clientSupportsMcpApps(params),
   );
   response.headers.set("Mcp-Session-Id", sessionId);
 
@@ -221,6 +229,7 @@ const toolsList = async <Caller>(
   id: JsonRpcId,
   params: unknown,
   protocolVersion?: string,
+  canRenderUi = false,
 ) => {
   const tools = await config.tools({ caller, meta: {} });
   const eligible = await Promise.all(
@@ -241,6 +250,16 @@ const toolsList = async <Caller>(
         agencyAllows(config, tool, scopes),
     )
     .map(([name, tool]) => ({
+      ...(canRenderUi && tool.ui && config.apps?.resources[tool.ui.resourceUri]
+        ? {
+            _meta: {
+              ui: {
+                resourceUri: tool.ui.resourceUri,
+                visibility: ["model", "app"],
+              },
+            },
+          }
+        : {}),
       annotations: tool.annotations,
       ...(tool.coaz === undefined ? {} : { coaz: tool.coaz }),
       description: tool.description,
@@ -917,43 +936,86 @@ const promptsGet = async <Caller>(
   });
 };
 
+const visibleAppResources = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  scopes: string[],
+  canRenderUi: boolean,
+) => {
+  if (!canRenderUi || !config.apps) return [];
+  const tools = await config.tools({ caller, meta: {} });
+  const uris = new Set<string>();
+  for (const [name, tool] of Object.entries(tools)) {
+    if (
+      tool.ui &&
+      scopeAllows(tool, scopes) &&
+      agencyAllows(config, tool, scopes) &&
+      (await commerceDecision(config, caller, name, tool))?.allowed !== false &&
+      config.apps.resources[tool.ui.resourceUri]
+    )
+      uris.add(tool.ui.resourceUri);
+  }
+  return [...uris].map((uri) =>
+    appResourceContent(config.apps!.resources[uri]!, uri),
+  );
+};
 const resourcesList = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
   id: JsonRpcId,
   params: unknown,
+  scopes: string[],
+  canRenderUi: boolean,
 ) => {
-  const resources = config.resources;
-  if (!resources) return rpcResult(id, { resources: [] });
+  const ordinary = config.resources
+    ? await config.resources.list({ caller })
+    : [];
+  const apps = await visibleAppResources(config, caller, scopes, canRenderUi);
   const { items, nextCursor } = paginate(
-    await resources.list({ caller }),
+    [
+      ...ordinary,
+      ...apps.map(({ uri, mimeType }) => ({
+        uri,
+        mimeType,
+        name: config.apps!.resources[uri]!.name,
+      })),
+    ],
     decodeCursor(params),
     config.listPageSize ?? DEFAULT_LIST_PAGE_SIZE,
   );
-
   return rpcResult(id, {
     resources: items,
     ...(nextCursor === undefined ? {} : { nextCursor }),
   });
 };
-
 const resourcesRead = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
   id: JsonRpcId,
   params: unknown,
+  scopes: string[],
+  canRenderUi: boolean,
 ) => {
+  if (!isRecord(params) || typeof params.uri !== "string")
+    return rpcError(id, JSONRPC_INVALID_PARAMS, "resources/read needs a uri");
+  const uri = params.uri;
+  if (uri.startsWith("ui://") && config.apps) {
+    const contents = await visibleAppResources(
+      config,
+      caller,
+      scopes,
+      canRenderUi,
+    );
+    const resource = contents.find((resource) => resource.uri === uri);
+    return resource
+      ? rpcResult(id, { contents: [resource] })
+      : rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown resource: ${uri}`);
+  }
   const resources = config.resources;
   if (!resources) return rpcError(id, JSONRPC_METHOD_NOT_FOUND, "No resources");
-  if (!isRecord(params) || typeof params.uri !== "string") {
-    return rpcError(id, JSONRPC_INVALID_PARAMS, "resources/read needs a uri");
-  }
-  const uri = params.uri;
   const text = await resources.read({ caller, uri });
-  if (text === null) {
+  if (text === null)
     return rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown resource: ${uri}`);
-  }
-
   return rpcResult(id, {
     contents: [
       { mimeType: resources.mimeType ?? DEFAULT_RESOURCE_MIME, text, uri },
@@ -1035,8 +1097,22 @@ export const dispatchMcp = async <Caller>(
     });
   }
   if (method === "ping") return rpcResult(id, {});
+  const canRenderUi = Boolean(
+    config.apps &&
+      context.sessions &&
+      context.sessionId &&
+      (await context.sessions.get(context.sessionId))?.canRenderUi,
+  );
   if (method === "tools/list") {
-    return toolsList(config, caller, scopes, id, params, protocolVersion);
+    return toolsList(
+      config,
+      caller,
+      scopes,
+      id,
+      params,
+      protocolVersion,
+      canRenderUi,
+    );
   }
   if (method === "tools/call") {
     return toolsCall(config, caller, scopes, id, params, {
@@ -1078,10 +1154,10 @@ export const dispatchMcp = async <Caller>(
   if (method === "prompts/list") return promptsList(config, id, params);
   if (method === "prompts/get") return promptsGet(config, caller, id, params);
   if (method === "resources/list") {
-    return resourcesList(config, caller, id, params);
+    return resourcesList(config, caller, id, params, scopes, canRenderUi);
   }
   if (method === "resources/read") {
-    return resourcesRead(config, caller, id, params);
+    return resourcesRead(config, caller, id, params, scopes, canRenderUi);
   }
 
   return rpcError(id, JSONRPC_METHOD_NOT_FOUND, `Unknown method: ${method}`);

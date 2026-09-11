@@ -1,3 +1,4 @@
+import type { McpAppsConfig } from "./apps";
 import type { CommerceContext, CommerceRequirement } from "./commerce";
 // Public types for @absolutejs/mcp. A server is defined by a config object:
 // the host supplies WHICH tools/prompts/resources to expose, HOW to authorize a
@@ -45,6 +46,7 @@ export type McpContent =
   | McpTextContent;
 
 export type McpToolResult = {
+  _meta?: Record<string, unknown>;
   content: McpContent[];
   isError?: boolean;
   /** Structured output validated against the tool's `outputSchema`, if any. */
@@ -99,13 +101,18 @@ export type McpSessionStore = {
   create: (session: {
     canElicit: boolean;
     canElicitUrl?: boolean;
+    canRenderUi?: boolean;
   }) => Promise<string> | string;
   drop: (id: string) => Promise<void> | void;
   get: (
     id: string,
   ) =>
-    | Promise<{ canElicit: boolean; canElicitUrl?: boolean } | null>
-    | { canElicit: boolean; canElicitUrl?: boolean }
+    | Promise<{
+        canElicit: boolean;
+        canElicitUrl?: boolean;
+        canRenderUi?: boolean;
+      } | null>
+    | { canElicit: boolean; canElicitUrl?: boolean; canRenderUi?: boolean }
     | null;
 };
 
@@ -141,6 +148,8 @@ export type McpToolCallContext = {
 
 /** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
+  /** Optional Apps view; serialized only for negotiated clients. Both model and app may call the tool. */
+  ui?: { resourceUri: string };
   /** Server-owned commerce classification; fails closed without commerce context. */
   commerce?: CommerceRequirement;
   annotations?: McpToolAnnotations;
@@ -302,6 +311,8 @@ export type McpServerInfo = {
 };
 
 export type McpServerConfig<Caller> = {
+  /** Optional MCP Apps resources. Capability persistence requires a shared session store on multi-instance deployments. */
+  apps?: McpAppsConfig;
   /** Resolve trusted deployment policy afresh for discovery and execution.
    * Does not replace agency approval, ownership, or payment confirmation. */
   commerce?: (context: {

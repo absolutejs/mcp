@@ -1,9 +1,10 @@
 {
   "author": "Alex Kahn",
-  "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry — OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
+  "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry \u2014 OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
   "devDependencies": {
     "@absolutejs/agency": "0.7.1",
     "@absolutejs/changelog": "^0.6.0",
+    "@modelcontextprotocol/ext-apps": "2.0.0",
     "@types/bun": "latest",
     "elysia": "2.0.0-beta.6",
     "exact-mirror": "1.2.4",
@@ -40,6 +41,11 @@
       "types": "./dist/src/commerce.d.ts",
       "import": "./dist/commerce.js",
       "default": "./dist/commerce.js"
+    },
+    "./apps": {
+      "types": "./dist/src/apps.d.ts",
+      "import": "./dist/apps.js",
+      "default": "./dist/apps.js"
     }
   },
   "publishConfig": {
@@ -61,17 +67,20 @@
     "README.md",
     "changelog.json",
     "dist",
-    "docs/commerce-host-rules.md"
+    "docs/commerce-host-rules.md",
+    "docs/mcp-apps.md",
+    "docs/third-party"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
+    "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
     "release": "bun run format && bun run test && bun run build && bun publish",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "test": "bun run build:apps && bun test",
+    "typecheck": "bun run build:apps && tsc --noEmit --project tsconfig.json",
     "check:package": "bun run typecheck && bun run test && bun run build && absolute-changelog check",
-    "prepublishOnly": "bun run check:package"
+    "prepublishOnly": "bun run check:package",
+    "build:apps": "bun scripts/build-apps.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.16.0"
+  "version": "0.17.0"
 }

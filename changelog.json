@@ -3,6 +3,33 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.0",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Negotiate MCP Apps with persisted capabilities, guarded offline UI resources and reusable SDK-backed billing views"
+        },
+        {
+          "kind": "added",
+          "summary": "Preserve remote UI metadata in the client and expose immutable PostgreSQL migration entries"
+        },
+        {
+          "kind": "changed",
+          "summary": "Extend McpClientOptions, McpRemoteTool, createSessionRegistry, McpSessionStore, McpServerConfig, McpTool and McpToolResult with optional Apps capability and metadata fields; existing text-only callers remain supported",
+          "symbols": [
+            "McpClientOptions",
+            "McpRemoteTool",
+            "createSessionRegistry",
+            "McpSessionStore",
+            "McpServerConfig",
+            "McpTool",
+            "McpToolResult"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.16.0",
       "date": "2026-09-11",
       "changes": [

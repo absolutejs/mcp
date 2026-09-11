@@ -71,6 +71,7 @@ export { mcpServer } from "./server";
 export { createSessionRegistry, type SessionRegistry } from "./sessions";
 export { createMemoryMcpTaskStore, publicMcpTask } from "./tasks";
 export {
+  mcpPostgresMigrations,
   createPostgresMcpSessionStore,
   createPostgresMcpTaskStore,
   mcpPostgresSchemaSql,
@@ -130,3 +131,11 @@ export {
   createBillingReportTools,
   createBillingManagementTool,
 } from "./billingTools";
+export {
+  MCP_APP_MIME,
+  clientSupportsMcpApps,
+  withMcpApp,
+  type McpAppResource,
+  type McpAppsConfig,
+} from "./apps";
+export { createBillingApps } from "./billingApps";

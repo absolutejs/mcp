@@ -1,3 +1,4 @@
+import { MCP_APP_MIME } from "./apps";
 // A minimal MCP CLIENT for talking to a remote server over streamable HTTP.
 // Stateless-friendly but also carries a session id + protocol-version header if
 // the server is stateful. Auth is the caller's job — pass a bearer (or any)
@@ -33,6 +34,8 @@ export class McpClientError extends Error {
 }
 
 export type McpClientOptions = {
+  /** Advertise only when this host implements a sandboxed MCP Apps renderer. */
+  apps?: boolean;
   /** Dynamic OAuth/DPoP provider. It may answer a 401 by completing discovery,
    *  incremental authorization, or refresh; the request is retried once. */
   authorization?: McpAuthorizationProvider;
@@ -57,6 +60,7 @@ export type McpClientOptions = {
 };
 
 export type McpRemoteTool = {
+  _meta?: Record<string, unknown>;
   annotations?: McpToolAnnotations;
   coaz?: boolean;
   description?: string;
@@ -341,9 +345,16 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
     const result = await rpc("initialize", {
       // Declaring `elicitation` is a promise that we can ASK THE USER. Only
       // make it when the host gave us a way to.
-      capabilities: options.onElicit
-        ? { elicitation: { form: {}, url: {} } }
-        : {},
+      capabilities: {
+        ...(options.onElicit ? { elicitation: { form: {}, url: {} } } : {}),
+        ...(options.apps
+          ? {
+              extensions: {
+                "io.modelcontextprotocol/ui": { mimeTypes: [MCP_APP_MIME] },
+              },
+            }
+          : {}),
+      },
       clientInfo: options.clientInfo ?? {
         name: "@absolutejs/mcp",
         version: "0",
@@ -375,6 +386,7 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
       collected.push(
         ...tools.filter(isRecord).map(
           (tool): McpRemoteTool => ({
+            _meta: isRecord(tool._meta) ? tool._meta : undefined,
             annotations: isRecord(tool.annotations)
               ? (tool.annotations as McpToolAnnotations)
               : undefined,

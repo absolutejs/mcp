@@ -18,7 +18,7 @@ const namespaceOf = (namespace: string) => {
   return namespace;
 };
 
-export const mcpPostgresSchemaSql = (namespace = "mcp") => {
+const legacyMcpPostgresSchemaSql = (namespace = "mcp") => {
   const ns = namespaceOf(namespace);
   return `CREATE SCHEMA IF NOT EXISTS ${ns};
 CREATE TABLE IF NOT EXISTS ${ns}.tasks (
@@ -43,6 +43,19 @@ CREATE TABLE IF NOT EXISTS ${ns}.sessions (
 ALTER TABLE ${ns}.sessions ADD COLUMN IF NOT EXISTS can_elicit_url boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON ${ns}.sessions (expires_at);`;
 };
+
+/** Immutable migration entries keep existing Agent journal digests stable. */
+export const mcpPostgresMigrations = (namespace = "mcp") => [
+  { id: "mcp@0.10.1", sql: legacyMcpPostgresSchemaSql(namespace) },
+  {
+    id: "mcp@0.17.0",
+    sql: `ALTER TABLE ${namespaceOf(namespace)}.sessions ADD COLUMN IF NOT EXISTS can_render_ui boolean NOT NULL DEFAULT false;`,
+  },
+];
+export const mcpPostgresSchemaSql = (namespace = "mcp") =>
+  mcpPostgresMigrations(namespace)
+    .map((entry) => entry.sql)
+    .join("\n");
 
 type TaskRow = { data: McpTask };
 
@@ -135,17 +148,18 @@ export const createPostgresMcpSessionStore = ({
 }): McpSessionStore => {
   const ns = namespaceOf(namespace);
   return {
-    create: async ({ canElicit, canElicitUrl }) => {
+    create: async ({ canElicit, canElicitUrl, canRenderUi }) => {
       const id = crypto.randomUUID();
       const current = now();
       await client.query(
-        `INSERT INTO ${ns}.sessions (session_id, can_elicit, can_elicit_url, created_at, last_seen_at, expires_at) VALUES ($1, $2, $3, $4::timestamptz, $4::timestamptz, $5::timestamptz)`,
+        `INSERT INTO ${ns}.sessions (session_id, can_elicit, can_elicit_url, created_at, last_seen_at, expires_at, can_render_ui) VALUES ($1, $2, $3, $4::timestamptz, $4::timestamptz, $5::timestamptz, $6)`,
         [
           id,
           canElicit,
           canElicitUrl ?? false,
           current.toISOString(),
           new Date(current.getTime() + ttlMs).toISOString(),
+          canRenderUi ?? false,
         ],
       );
       return id;
@@ -160,8 +174,9 @@ export const createPostgresMcpSessionStore = ({
       const result = await client.query<{
         can_elicit: boolean;
         can_elicit_url: boolean;
+        can_render_ui: boolean;
       }>(
-        `UPDATE ${ns}.sessions SET last_seen_at = $2::timestamptz, expires_at = $3::timestamptz WHERE session_id = $1 AND expires_at > $2::timestamptz RETURNING can_elicit, can_elicit_url`,
+        `UPDATE ${ns}.sessions SET last_seen_at = $2::timestamptz, expires_at = $3::timestamptz WHERE session_id = $1 AND expires_at > $2::timestamptz RETURNING can_elicit, can_elicit_url, can_render_ui`,
         [
           id,
           current.toISOString(),
@@ -174,6 +189,7 @@ export const createPostgresMcpSessionStore = ({
         : {
             canElicit: row.can_elicit,
             canElicitUrl: row.can_elicit_url,
+            canRenderUi: row.can_render_ui ?? false,
           };
     },
   };
