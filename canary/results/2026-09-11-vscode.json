@@ -1,0 +1,28 @@
+{
+  "date": "2026-09-11",
+  "runtimePackage": "@absolutejs/mcp@0.17.3 pre-release build",
+  "host": "Visual Studio Code 1.135.0, native Windows Copilot Chat",
+  "transport": "Streamable HTTP, isolated loopback synthetic workspace",
+  "protocol": "2025-11-25",
+  "protocolHeader": null,
+  "appsMimeType": "text/html;profile=mcp-app",
+  "successfulCalls": {
+    "get_billing_status": 2,
+    "get_usage_report": 2,
+    "list_receipts": 2
+  },
+  "observed": [
+    "All three native report views rendered after window reload",
+    "Balance and usage refresh succeeded",
+    "Daily usage expanded",
+    "Receipt pagination reached empty final page and hid Older receipts",
+    "Initial render and window reload made no extra report calls",
+    "All three app documents measured 242px with no horizontal document overflow"
+  ],
+  "limitations": [
+    "Initial balance webview was blank; window reload restored it; cause not isolated",
+    "Window reload restores original tool results, including first receipt page",
+    "OAuth, real-account isolation and expired-session reconnect against authenticated staging not tested",
+    "Host commerce permissions not certified"
+  ]
+}

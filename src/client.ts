@@ -291,13 +291,37 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
           });
         }
       }
-      const captured = response.headers.get("mcp-session-id");
-      if (captured) sessionId = captured;
       if (response.status === 401) {
         throw new McpClientError("The MCP server rejected the credentials", {
           status: 401,
         });
       }
+      if (!response.ok) {
+        // Do not replay tools: callers must decide whether retrying is safe.
+        // Clear only the rejected session, not a newer concurrent session.
+        if (
+          response.status === 404 &&
+          sessionId === headers["mcp-session-id"]
+        ) {
+          sessionId = null;
+        }
+        const failure: unknown = await parseBody(response, maxBytes).catch(
+          () => null,
+        );
+        const error =
+          isRecord(failure) && isRecord(failure.error) ? failure.error : null;
+        throw new McpClientError(
+          typeof error?.message === "string"
+            ? error.message
+            : `MCP HTTP request failed (${response.status})`,
+          {
+            status: response.status,
+            code: typeof error?.code === "number" ? error.code : undefined,
+          },
+        );
+      }
+      const captured = response.headers.get("mcp-session-id");
+      if (captured) sessionId = captured;
       const isStream = (response.headers.get("content-type") ?? "").includes(
         "text/event-stream",
       );
@@ -342,6 +366,8 @@ export const createMcpClient = (options: McpClientOptions): McpClient => {
   };
 
   const initialize = async () => {
+    // Reinitialization after expiry/restart must not carry the old session ID.
+    sessionId = null;
     const result = await rpc("initialize", {
       // Declaring `elicitation` is a promise that we can ASK THE USER. Only
       // make it when the host gave us a way to.

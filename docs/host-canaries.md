@@ -4,7 +4,7 @@ The package ships `canary/server.ts`: a loopback-only, synthetic billing endpoin
 
 From an installed package, run `bun node_modules/@absolutejs/mcp/canary/server.ts`. From this repository, build first, then `bun run canary`. The fixed endpoint is `http://127.0.0.1:4428/mcp`. Startup validates all four report calls before listening. Stop it with Ctrl-C after the test. A port conflict fails startup rather than replacing another service.
 
-The JSONL log records protocol methods, status, client name/version, negotiated protocol, advertised Apps MIME types and tool success. It omits headers, session IDs, tool arguments and report bodies. Keep host transcripts local: host logs can contain unrelated account or environment information. Commit only reviewed evidence.
+The JSONL log records protocol methods, status, client name/version, negotiated protocol, advertised Apps MIME types and tool success. It records only the MCP protocol-version header and omits all other headers, session IDs, tool arguments and report bodies. Keep host transcripts local: host logs can contain unrelated account or environment information. Commit only reviewed evidence.
 
 ## Host connections
 
@@ -49,7 +49,7 @@ Terminal tests ran against the built `0.17.0` runtime. The later Claude web test
 | Claude Code 2.1.265, print mode, Streamable HTTP | Requested 2025-11-25; accepted server 2025-06-18; no Apps MIME extension | Four read calls passed, including cursor pagination; text/structured fallback; no embedded rendering claim |
 | Codex CLI 0.154.0, exec mode, Streamable HTTP    | Requested and accepted 2025-06-18; no Apps MIME extension                | Four read calls passed, including cursor pagination; text/structured fallback; no embedded rendering claim |
 | Claude web, Windows Chrome 152.0.7977.83         | Apps MIME advertised; accepted 2025-06-18                                | Three native views, refresh and pagination passed                                                          |
-| VS Code 1.135.0                                  | Installed version confirmed                                              | Interactive Copilot/MCP Apps UI not exercised                                                              |
+| VS Code 1.135.0                                  | Apps MIME advertised; negotiated 2025-11-25; omitted protocol header     | Three views, refresh and pagination verified after compatibility fix; initial balance required reload      |
 | Cursor, Gemini CLI, goose                        | Executables unavailable in this environment                              | Not tested                                                                                                 |
 | ChatGPT hosted surfaces                          | No host canary performed                                                 | Not tested                                                                                                 |
 
@@ -67,4 +67,12 @@ A temporary public tunnel allowed discovery but failed tool execution before rea
 
 For Windows/WSL testing, a headed Linux browser may not appear on the Windows desktop. Use a native Windows test browser with a separate persistent profile and loopback CDP endpoint. Reuse one Playwright CDP connection. If existing cross-origin frames are missing from automation, reload with that connection established; Claude uses a wrapper frame and a nested `about:blank` app frame. Never commit browser profiles or credentials.
 
-Conversational rendering is verified for this exact surface. VS Code/Cursor interactive rendering and authenticated staging reconnect/account-isolation remain separate open gates.
+Conversational rendering is verified for this exact surface. Cursor interactive rendering and authenticated staging reconnect/account-isolation remain separate open gates.
+
+## VS Code Copilot and session compatibility (0.17.3)
+
+Native Windows VS Code 1.135.0 advertised Apps MIME support but omitted MCP-Protocol-Version on subsequent requests. The shared handler now applies the specified 2025-03-26 fallback for an absent header; explicitly unsupported values still return 400. The fixture now uses default supported protocols instead of forcing a downgrade. See the [MCP transport specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#protocol-version-header).
+
+Three report views rendered in the signed-in isolated Copilot workspace. Balance and usage refresh, daily expansion and receipt pagination passed. There were six report calls: three initial calls and three explicit button actions. Reloading restored the original report results with no extra report calls. All app documents measured 242px without horizontal document overflow. The first balance webview was blank until a window reload; its cause is not isolated, so this is a qualified rendering result, not proof of reliable first-load behavior. Reviewed aggregate evidence: `canary/results/2026-09-11-vscode.json`.
+
+Package regressions verify authorization before session deletion, per-request account selection, expired-session HTTP 404, and fresh explicit client initialization. HTTP failures now produce McpClientError with status (and a JSON-RPC code when available), including empty/non-JSON responses. After a session 404, call client.initialize() to negotiate a fresh session before further operations. The failed tool is never automatically replayed; callers must decide whether retrying is appropriate. Synthetic credentials prove handler behavior, not OAuth correctness or real-tenant isolation. Authenticated staging remains a separate release gate.

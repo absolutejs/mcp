@@ -3,6 +3,20 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.3",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Authorize session deletion, recover explicit client initialization after expiry, and preserve typed HTTP failures without replaying tools"
+        },
+        {
+          "kind": "fixed",
+          "summary": "Accept the standard protocol-header compatibility fallback used by VS Code Copilot and record native report rendering evidence"
+        }
+      ]
+    },
+    {
       "version": "0.17.2",
       "date": "2026-09-11",
       "changes": [

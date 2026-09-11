@@ -49,7 +49,6 @@ const handler = createMcpHandler({
   issuer: "http://127.0.0.1:4428",
   path: "/mcp",
   serverInfo: { name: "absolute-billing-canary", version: "1" },
-  supportedProtocols: ["2025-06-18"],
   authorize: async () => ({
     ok: true,
     caller: "synthetic-fixture",
@@ -110,6 +109,7 @@ Bun.serve({
       JSON.stringify({
         method: rpc?.method ?? request.method,
         status: response.status,
+        protocolHeader: request.headers.get("mcp-protocol-version"),
         ...(rpc?.method === "initialize"
           ? {
               client: rpc.params?.clientInfo?.name,

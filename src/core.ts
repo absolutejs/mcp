@@ -97,18 +97,17 @@ export const runMcpPost = async <Caller>(
     body !== null &&
     "method" in body &&
     (body as { method?: unknown }).method === "initialize";
-  const protocolVersion = request.headers.get("mcp-protocol-version");
+  // Streamable HTTP specifies this fallback for clients omitting the header.
+  const protocolVersion =
+    request.headers.get("mcp-protocol-version") ?? "2025-03-26";
   const supportedProtocols = config.supportedProtocols ?? [
     MCP_LATEST_PROTOCOL_VERSION,
     "2025-06-18",
     "2025-03-26",
     "2024-11-05",
   ];
-  if (
-    !isInitialize &&
-    (protocolVersion === null || !supportedProtocols.includes(protocolVersion))
-  ) {
-    return new Response("Missing or unsupported MCP-Protocol-Version", {
+  if (!isInitialize && !supportedProtocols.includes(protocolVersion)) {
+    return new Response("Unsupported MCP-Protocol-Version", {
       status: 400,
     });
   }
@@ -123,7 +122,7 @@ export const runMcpPost = async <Caller>(
   }
 
   return dispatchMcp(config, auth.caller, auth.scopes ?? [], body, {
-    protocolVersion: protocolVersion ?? MCP_LATEST_PROTOCOL_VERSION,
+    protocolVersion,
     requestSignal: request.signal,
     sessionId,
     sessions,
@@ -137,6 +136,14 @@ export const runMcpDelete = async <Caller>(
   config: McpServerConfig<Caller>,
   request: Request,
 ) => {
+  // A session ID is protocol state, never a credential.
+  const auth = await config.authorize(request);
+  if (!auth.ok) {
+    return unauthorized(
+      `${config.issuer}${metadataPathFor(config.path)}`,
+      auth.reason,
+    );
+  }
   const sessions = registryFor(config);
   const sessionId = request.headers.get("mcp-session-id");
   if (!sessions || !sessionId) {
