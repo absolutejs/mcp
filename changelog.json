@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.15.1",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Build and test before publishing so checkout exports are present in the distributed artifact"
+        }
+      ]
+    },
+    {
       "version": "0.15.0",
       "date": "2026-09-11",
       "changes": [
