@@ -69,7 +69,9 @@
     "dist",
     "docs/commerce-host-rules.md",
     "docs/mcp-apps.md",
-    "docs/third-party"
+    "docs/third-party",
+    "canary",
+    "docs/host-canaries.md"
   ],
   "scripts": {
     "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
@@ -77,10 +79,12 @@
     "release": "bun run format && bun run test && bun run build && bun publish",
     "test": "bun run build:apps && bun test",
     "typecheck": "bun run build:apps && tsc --noEmit --project tsconfig.json",
-    "check:package": "bun run typecheck && bun run test && bun run build && absolute-changelog check",
+    "check:package": "bun run typecheck && bun run test && bun run build && bun run check:canary && absolute-changelog check",
     "prepublishOnly": "bun run check:package",
-    "build:apps": "bun scripts/build-apps.ts"
+    "build:apps": "bun scripts/build-apps.ts",
+    "canary": "bun canary/server.ts",
+    "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.0"
+  "version": "0.17.1"
 }

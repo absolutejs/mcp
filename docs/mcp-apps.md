@@ -54,3 +54,7 @@ Protocol tests cover negotiation, text fallback, spoofed later capabilities, aut
 Passing this fixture does not certify a particular conversational, IDE or terminal host. Real-host capability/refresh/session-expiry checks remain required before activation. Rendering support never supplies checkout permission; apply [commerce-host-rules.md](commerce-host-rules.md) independently.
 
 Primary references checked September 11, 2026: [stable Apps specification](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx), [official quickstart](https://apps.extensions.modelcontextprotocol.io/api/documents/quickstart.html), [App SDK](https://apps.extensions.modelcontextprotocol.io/api/classes/app.App.html), [AppBridge SDK](https://apps.extensions.modelcontextprotocol.io/api/classes/app-bridge.AppBridge.html).
+
+## Real-host canaries
+
+See [the reusable host canary and observed results](host-canaries.md) for isolated connection instructions, acceptance criteria and remaining rollout gates.

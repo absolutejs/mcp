@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.1",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Ship a preflight-validated synthetic host canary and record Claude Code and Codex terminal interoperability evidence"
+        }
+      ]
+    },
+    {
       "version": "0.17.0",
       "date": "2026-09-11",
       "changes": [
