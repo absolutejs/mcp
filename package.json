@@ -72,7 +72,8 @@
     "docs/mcp-apps.md",
     "docs/third-party",
     "canary",
-    "docs/host-canaries.md"
+    "docs/host-canaries.md",
+    "UPSTREAM_ISSUES.md"
   ],
   "scripts": {
     "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
@@ -87,5 +88,5 @@
     "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts canary/authenticated.ts canary/vscode/check-mount.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.5"
+  "version": "0.17.6"
 }

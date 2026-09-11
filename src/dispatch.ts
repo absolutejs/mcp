@@ -196,7 +196,7 @@ const initialize = async <Caller>(
   const sessionId = await context.sessions.create(
     elicitation.form || elicitation.url,
     elicitation.url,
-    Boolean(config.apps) && clientSupportsMcpApps(params),
+    Boolean(config.apps) && clientSupportsMcpApps(params, config.apps),
   );
   response.headers.set("Mcp-Session-Id", sessionId);
 

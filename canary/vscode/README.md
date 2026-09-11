@@ -28,4 +28,6 @@ Some unmodified first-load runs passed too: this is a timing-sensitive failure, 
 
 ## Delivery status
 
-This package distributes a reviewable upstream source patch and regression checker. It does **not** patch users' VS Code installations. The in-memory test change does not survive an editor restart. An upstream release or an explicitly maintained patched host build is required before claiming that ordinary VS Code users receive this fix. Keep the first-load rollout gate open until that distribution is verified. No upstream submission is implied by this artifact.
+The bug is reported in [microsoft/vscode#335908](https://github.com/microsoft/vscode/issues/335908); no PR was submitted. This package distributes the source patch and checker for review, but does not modify installed editors. The test-process patch disappears on restart.
+
+MCP 0.17.6 instead defaults affected versions to text and structured reports. Reconnect after upgrading to negotiate the fallback. See [UPSTREAM_ISSUES.md](../../UPSTREAM_ISSUES.md) for the exact version scope, diagnostic override and removal conditions. Rich first-load support remains unverified in an unmodified released host.

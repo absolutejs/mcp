@@ -3,6 +3,24 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.6",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Use text and structured report results on affected VS Code builds while their upstream webview startup race remains unresolved"
+        },
+        {
+          "kind": "added",
+          "summary": "Allow verified patched hosts through the version fallback with optional Apps configuration",
+          "symbols": [
+            "clientSupportsMcpApps",
+            "McpAppsConfig"
+          ]
+        }
+      ]
+    },
+    {
       "version": "0.17.5",
       "date": "2026-09-11",
       "changes": [

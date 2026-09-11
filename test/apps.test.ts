@@ -234,3 +234,69 @@ test("package client advertises Apps only when enabled and preserves remote UI m
     ui: { resourceUri: uri, visibility: ["model", "app"] },
   });
 });
+
+test("affected VS Code versions use text fallback without hiding report tools", async () => {
+  for (const version of ["1.135.0", "1.136.1"]) {
+    const handler = createMcpHandler(config());
+    const initialized = await handler(
+      rpc("initialize", {
+        ...initialize([MCP_APP_MIME]),
+        clientInfo: { name: "Visual Studio Code", version },
+      }),
+    );
+    const session = initialized!.headers.get("mcp-session-id")!;
+    const tools = (
+      await (await handler(rpc("tools/list", {}, session)))!.json()
+    ).result.tools;
+    expect(tools.map((tool: { name: string }) => tool.name)).toEqual([
+      "report",
+    ]);
+    expect(tools[0]._meta).toBeUndefined();
+    const result = (
+      await (await handler(
+        rpc("tools/call", { name: "report", arguments: {} }, session),
+      ))!.json()
+    ).result;
+    expect(result.content[0].text).toBe("3 credits");
+    expect(result.structuredContent).toEqual({ remaining: 3 });
+    const resource = await handler(rpc("resources/read", { uri }, session));
+    expect((await resource!.json()).error).toBeDefined();
+  }
+});
+test("host workaround is narrowly scoped and verified patched builds can opt in", async () => {
+  for (const [name, version, override] of [
+    ["Claude", "1.135.0", false],
+    ["Visual Studio Code", "1.137.0", false],
+    ["Visual Studio Code", "1.135.0", true],
+  ] as const) {
+    const cfg = config();
+    cfg.apps!.allowKnownBrokenHosts = override;
+    const handler = createMcpHandler(cfg);
+    const response = await handler(
+      rpc("initialize", {
+        ...initialize([MCP_APP_MIME]),
+        clientInfo: { name, version },
+      }),
+    );
+    const session = response!.headers.get("mcp-session-id")!;
+    const tools = (
+      await (await handler(rpc("tools/list", {}, session)))!.json()
+    ).result.tools;
+    expect(tools[0]._meta.ui.resourceUri).toBe(uri);
+  }
+  const cfg = config();
+  cfg.apps!.allowKnownBrokenHosts = true;
+  const handler = createMcpHandler(cfg);
+  const response = await handler(
+    rpc("initialize", {
+      ...initialize([]),
+      clientInfo: { name: "Visual Studio Code", version: "1.135.0" },
+    }),
+  );
+  const tools = (
+    await (await handler(
+      rpc("tools/list", {}, response!.headers.get("mcp-session-id")!),
+    ))!.json()
+  ).result.tools;
+  expect(tools[0]._meta).toBeUndefined();
+});

@@ -97,3 +97,9 @@ This verifies the selected read path, not every tenant resource, token revocatio
 ## VS Code first-load race identified
 
 MCP 0.17.5 includes `canary/vscode/README.md`, a VS Code source patch and an executable actual-method regression. A controlled out-of-order origin-hash completion reproduces a blank view in native VS Code 1.135.0. The candidate current-promise guard passed three rounds across all three report views and both source-level completion orders. This is a host fix, not an MCP renderer change. The package distributes the patch for review; it does not modify installed editors or certify an upstream release. First-load activation remains blocked until a supported host containing the fix is verified.
+
+## Temporary VS Code fallback (0.17.6)
+
+The issue is tracked in [microsoft/vscode#335908](https://github.com/microsoft/vscode/issues/335908). Known affected versions now receive text and structured reports on new sessions, keeping tools usable without invoking the faulty webview path. Other hosts retain their negotiated presentation. See [UPSTREAM_ISSUES.md](../UPSTREAM_ISSUES.md) for scope and removal conditions. This workaround does not certify rich rendering on affected editors.
+
+Native Windows VS Code 1.135.0 verification: after removing the in-memory editor patch, reconnecting alone left cached UI metadata and produced resource errors. Running **MCP: Reset Cached Tools**, reloading the window and opening a new chat cleared it. The final run returned all three reports as visible text, with three successful tool calls, no resource reads and no App frames. This is a verified text fallback, not rich rendering evidence.

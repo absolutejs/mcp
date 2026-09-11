@@ -3,15 +3,31 @@ import { isRecord } from "./guards";
 export const MCP_APP_MIME = "text/html;profile=mcp-app";
 export type McpAppResource = { name: string; html: string };
 export type McpAppsConfig = {
+  /** Only enable for a host build whose upstream rendering fix has been verified. */
+  allowKnownBrokenHosts?: boolean;
   resources: Record<string, McpAppResource>;
   store?: McpSessionStore;
 };
 /** Capability is presentation only; never a commerce or authorization decision. */
-export const clientSupportsMcpApps = (params: unknown) => {
+export const clientSupportsMcpApps = (
+  params: unknown,
+  options: Pick<McpAppsConfig, "allowKnownBrokenHosts"> = {},
+) => {
   if (
     !isRecord(params) ||
     !isRecord(params.capabilities) ||
     !isRecord(params.capabilities.extensions)
+  )
+    return false;
+  // https://github.com/microsoft/vscode/issues/335908
+  // A stale host startup can replace a connected iframe and leave Apps blank.
+  // Scope this presentation fallback to versions checked in our investigation.
+  if (
+    !options.allowKnownBrokenHosts &&
+    isRecord(params.clientInfo) &&
+    params.clientInfo.name === "Visual Studio Code" &&
+    (params.clientInfo.version === "1.135.0" ||
+      params.clientInfo.version === "1.136.1")
   )
     return false;
   const ui = params.capabilities.extensions["io.modelcontextprotocol/ui"];
