@@ -6,6 +6,16 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Add explicit credit-budget envelopes for durable prepaid MCP work"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.14.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
 					"symbols": [
 						"McpServerConfig",

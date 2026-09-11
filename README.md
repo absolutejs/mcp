@@ -423,3 +423,7 @@ deployments can route discovery through `@absolutejs/egress`.
 
 Business Source License 1.1 — see [LICENSE](./LICENSE). Converts to Apache 2.0
 on the Change Date.
+
+### Budgeted prepaid work
+
+`budgetedMcpTool({ tool, execute })` adds a stable work ID, an explicit maximum-credit budget, and a `paid_access` commerce requirement. The executor must bind the account and use durable claims and settlement (for example `@absolutejs/billing/credit-work`). Only wrap tools whose effects and metering finish inside the execution scope. Deferred jobs need a durable budget handoff. Task-required, authorization-mapped, and already commerce-tagged tools are rejected rather than silently changing their enforcement contracts.

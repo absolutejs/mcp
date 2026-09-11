@@ -117,3 +117,5 @@ export type {
 export * from "./commerce";
 
 export { createCreditBalanceTool, type McpCreditBalance } from "./creditStatus";
+
+export { budgetedMcpTool, type McpCreditWorkRequest } from "./budgetedTool";
