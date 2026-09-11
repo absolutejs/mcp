@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-11",
+  "runtimePackage": "@absolutejs/mcp@0.17.1",
+  "host": "Claude web custom connector",
+  "browser": "Windows Chrome 152.0.7977.83",
+  "data": "synthetic only",
+  "protocol": "2025-06-18",
+  "appsMimeType": "text/html;profile=mcp-app",
+  "successfulCalls": {
+    "get_billing_status": 2,
+    "get_usage_report": 2,
+    "list_receipts": 2
+  },
+  "observed": [
+    "Three native report views rendered",
+    "Balance refresh succeeded",
+    "Usage refresh and daily row expansion succeeded",
+    "Receipt pagination ended with empty page and hidden Older receipts button",
+    "No extra tool calls from initial rendering or page reload",
+    "390px desktop viewport: app widths 322px; no horizontal document overflow"
+  ],
+  "notVerified": [
+    "Native mobile application",
+    "OAuth login",
+    "Account isolation",
+    "Expired-session reconnect",
+    "IDE hosts"
+  ],
+  "cleanup": "Temporary connector and development route removed"
+}

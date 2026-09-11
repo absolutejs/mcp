@@ -42,19 +42,29 @@ Record the exact host version/surface, transport, requested and negotiated proto
 
 ## Observed September 11, 2026
 
-Tests ran against the built `0.17.0` runtime, with the reusable canary distributed starting in `0.17.1`.
+Terminal tests ran against the built `0.17.0` runtime. The later Claude web test used the published `0.17.1` canary.
 
 | Host                                             | Negotiation                                                              | Observed result                                                                                            |
 | ------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | Claude Code 2.1.265, print mode, Streamable HTTP | Requested 2025-11-25; accepted server 2025-06-18; no Apps MIME extension | Four read calls passed, including cursor pagination; text/structured fallback; no embedded rendering claim |
 | Codex CLI 0.154.0, exec mode, Streamable HTTP    | Requested and accepted 2025-06-18; no Apps MIME extension                | Four read calls passed, including cursor pagination; text/structured fallback; no embedded rendering claim |
-| Claude web                                       | Browser redirected to sign-in                                            | Not tested; requires signed-in test session and reachable synthetic staging endpoint                       |
+| Claude web, Windows Chrome 152.0.7977.83         | Apps MIME advertised; accepted 2025-06-18                                | Three native views, refresh and pagination passed                                                          |
 | VS Code 1.135.0                                  | Installed version confirmed                                              | Interactive Copilot/MCP Apps UI not exercised                                                              |
 | Cursor, Gemini CLI, goose                        | Executables unavailable in this environment                              | Not tested                                                                                                 |
 | ChatGPT hosted surfaces                          | No host canary performed                                                 | Not tested                                                                                                 |
 
 Both tested terminal clients tolerated GET 405 (no standalone SSE stream) and discovered all three tools. Claude Code also sent a `server/discover` probe that received 400 before successful initialization. These observations do not establish support in other versions or distributions. Initial fixture-development attempts failed receipt validation; the final fixture uses the billing package cursor encoder, supplies a valid receipt ID, and validates its records before listening.
 
-The remaining release gates are real conversational/IDE rendering, authenticated staging reconnect/isolation, then the product's migration and commerce approval gates. This evidence does not enable any host commerce profile.
+The remaining release gates are other host surfaces including IDE rendering, authenticated staging reconnect/isolation, then the product's migration and commerce approval gates. This evidence does not enable any host commerce profile.
 
 Sources: [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli), [VS Code MCP servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers), and the installed `claude --help` / `claude mcp --help` output. Host observations above come from actual local runs, not documentation claims.
+
+## Claude web rendering evidence
+
+The signed-in custom-connector test used the published 0.17.1 synthetic canary and native Windows Chrome 152.0.7977.83. Claude identified the reports as three interactive tools. All three HTML resource reads and initial tool calls succeeded. There were exactly three initial report calls; loading/reloading the views did not issue extra tool calls. Explicit balance refresh, usage refresh and Older receipts produced three further successful read calls. Daily usage expanded correctly. The final receipt page was empty and the Older receipts button disappeared. At a 390-pixel desktop viewport the embedded views had 322-pixel widths and no horizontal document overflow. This is not a native mobile-app check.
+
+A temporary public tunnel allowed discovery but failed tool execution before reaching the handler. The passing run used a dedicated HTTPS development endpoint forwarding to the unchanged synthetic fixture. The temporary connector and route were removed afterward. No production application, billing data, OAuth grants or commerce profiles were changed. Reviewed aggregate evidence is in `canary/results/2026-09-11-claude-web.json`; it includes no endpoint addresses, headers, session IDs, credentials or chat transcripts. Patch 0.17.2 distributes this evidence; report runtime code is unchanged.
+
+For Windows/WSL testing, a headed Linux browser may not appear on the Windows desktop. Use a native Windows test browser with a separate persistent profile and loopback CDP endpoint. Reuse one Playwright CDP connection. If existing cross-origin frames are missing from automation, reload with that connection established; Claude uses a wrapper frame and a nested `about:blank` app frame. Never commit browser profiles or credentials.
+
+Conversational rendering is verified for this exact surface. VS Code/Cursor interactive rendering and authenticated staging reconnect/account-isolation remain separate open gates.

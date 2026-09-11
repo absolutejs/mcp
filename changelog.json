@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.2",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Record verified Claude web rendering, refresh, pagination and narrow-viewport host canary evidence"
+        }
+      ]
+    },
+    {
       "version": "0.17.1",
       "date": "2026-09-11",
       "changes": [
