@@ -1,0 +1,22 @@
+--- a/src/vs/workbench/contrib/webview/browser/webviewElement.ts
++++ b/src/vs/workbench/contrib/webview/browser/webviewElement.ts
+@@ -477,9 +477,16 @@
+ 		}
+ 
+ 		this._windowId = targetWindow.vscodeWindowId;
+-		this._encodedWebviewOriginPromise = parentOriginHash(targetWindow.origin, this.origin).then(id => this._encodedWebviewOrigin = id);
+-		this._encodedWebviewOriginPromise.then(encodedWebviewOrigin => {
+-			if (!this._disposed) {
++		const encodedWebviewOriginPromise = parentOriginHash(targetWindow.origin, this.origin).then(id => {
++			if (this._encodedWebviewOriginPromise === encodedWebviewOriginPromise) {
++				this._encodedWebviewOrigin = id;
++			}
++			return id;
++		});
++		this._encodedWebviewOriginPromise = encodedWebviewOriginPromise;
++		encodedWebviewOriginPromise.then(encodedWebviewOrigin => {
++			// A remount may supersede this startup before its origin hash resolves.
++			if (!this._disposed && this._encodedWebviewOriginPromise === encodedWebviewOriginPromise) {
+ 				this._initElement(encodedWebviewOrigin, this.extension, this._options, targetWindow);
+ 			}
+ 		});

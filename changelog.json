@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.5",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Distribute a verified VS Code webview startup-race source patch and actual-method regression checker, with explicit upstream delivery requirements"
+        }
+      ]
+    },
+    {
       "version": "0.17.4",
       "date": "2026-09-11",
       "changes": [
