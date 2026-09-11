@@ -427,3 +427,7 @@ on the Change Date.
 ### Budgeted prepaid work
 
 `budgetedMcpTool({ tool, execute })` adds a stable work ID, an explicit maximum-credit budget, and a `paid_access` commerce requirement. The executor must bind the account and use durable claims and settlement (for example `@absolutejs/billing/credit-work`). Only wrap tools whose effects and metering finish inside the execution scope. Deferred jobs need a durable budget handoff. Task-required, authorization-mapped, and already commerce-tagged tools are rejected rather than silently changing their enforcement contracts.
+
+## Secure credit checkout
+
+`createCheckoutHandoffTool` and `createPurchaseStatusTool` provide account-bound credit checkout and recovery contracts. The issuer must bind server pricing and identity; route these tools through the commerce guard. Checkout is classified as `external_checkout`, so restricted and unverified channels cannot discover or execute it. Status works at zero credits. Never pass card data in tool input. See [host rules](docs/commerce-host-rules.md).
