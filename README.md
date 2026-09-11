@@ -13,6 +13,54 @@ authorization server. The default negotiated revision is the current finalized
 `2025-11-25` specification; older finalized revisions remain available when
 explicitly requested.
 
+## Commerce across AI hosts
+
+See [Commerce host rules and shared package design](docs/commerce-host-rules.md)
+for the dated host-policy survey, checkout restrictions, secure handoffs, and
+reusable AbsoluteJS package boundaries. Host eligibility is implemented;
+checkout sessions, payment adapters and commerce UI remain planned.
+
+### Enforce host commerce eligibility
+
+`@absolutejs/mcp/commerce` exports `evaluateCommerce`, typed requirements and
+review evidence. Tag every commerce tool with `commerce`; the server hides
+ineligible tools and checks again before execution (including delayed tasks).
+Tools without a commerce tag keep their existing behavior.
+
+```ts
+mcpServer<Caller>({
+  // Existing authorize, issuer, path, serverInfo and agency configuration…
+  commerce: ({ caller }) => resolveReviewedDeployment(caller),
+  tools: () => ({
+    open_checkout: {
+      commerce: { action: "external_checkout", categories: ["usage_credits"] },
+      description: "Open a secure checkout for service credits",
+      inputSchema: { type: "object", properties: {} },
+      handler: () => createSecureCheckoutHandoff(),
+    },
+  }),
+});
+```
+
+`resolveReviewedDeployment` and `createSecureCheckoutHandoff` above are consumer
+integration callbacks, not package exports. Return a `CommerceContext` based on
+trusted server configuration, never the tool arguments or a claimed client name.
+Unknown channels and missing/expired reviews fail closed. A deployment review
+cannot override the bundled ChatGPT digital-sales, Claude interactive-purchase,
+or Cursor marketplace paid-access restrictions. Ambiguous profiles intersect.
+
+Reviews must bind the profile, actions, product categories, source URLs and
+validity window. Capabilities such as external links are checked independently.
+Classify every possible cart category server-side; never trust a model-supplied
+product category. `meta.commerceDecision` records the result for `onCall`.
+
+This gate is **host eligibility only**: preserve ownership checks, Agency action
+authorization, exact purchase confirmation and provider reconciliation. It does
+not inspect arbitrary text, prompts, resources or untagged tools for sales links.
+Consumers must use the same evaluator for those surfaces until shared renderers
+are implemented. An informational-link classification must never redirect users
+to a transaction. No live sales path is enabled by installing this package.
+
 ## Agent action enforcement
 
 Tools carrying manifest contract 2 `authorization` metadata fail closed unless

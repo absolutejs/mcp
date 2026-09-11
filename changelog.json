@@ -1,5 +1,22 @@
 {
 	"contract": 1,
 	"name": "@absolutejs/mcp",
-	"releases": []
+	"releases": [
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
+					"symbols": [
+						"McpServerConfig",
+						"McpTool",
+						"evaluateCommerce",
+						"createCreditBalanceTool"
+					]
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.13.0"
+		}
+	]
 }

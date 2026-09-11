@@ -1,3 +1,4 @@
+import { evaluateCommerce, type CommerceDecision } from "./commerce";
 // The MCP method dispatcher. Pure and framework-free: given the server config,
 // a resolved caller, its scopes, and one decoded JSON-RPC message, it produces
 // the Response. Capabilities advertised on `initialize` are derived from what
@@ -194,6 +195,25 @@ const initialize = async <Caller>(
   return response;
 };
 
+const commerceDecision = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  name: string,
+  tool: McpTool,
+): Promise<CommerceDecision | undefined> => {
+  if (tool.commerce === undefined) return undefined;
+  try {
+    return evaluateCommerce(
+      tool.commerce,
+      config.commerce
+        ? await config.commerce({ caller, name })
+        : { profiles: [] },
+    );
+  } catch {
+    return evaluateCommerce(tool.commerce, { profiles: [] });
+  }
+};
+
 const toolsList = async <Caller>(
   config: McpServerConfig<Caller>,
   caller: Caller,
@@ -203,10 +223,22 @@ const toolsList = async <Caller>(
   protocolVersion?: string,
 ) => {
   const tools = await config.tools({ caller, meta: {} });
+  const eligible = await Promise.all(
+    Object.entries(tools).map(async ([name, tool]) => ({
+      name,
+      allowed:
+        (await commerceDecision(config, caller, name, tool))?.allowed !== false,
+    })),
+  );
+  const commerceVisible = new Set(
+    eligible.filter((entry) => entry.allowed).map((entry) => entry.name),
+  );
   const visible = Object.entries(tools)
     .filter(
-      ([, tool]) =>
-        scopeAllows(tool, scopes) && agencyAllows(config, tool, scopes),
+      ([name, tool]) =>
+        commerceVisible.has(name) &&
+        scopeAllows(tool, scopes) &&
+        agencyAllows(config, tool, scopes),
     )
     .map(([name, tool]) => ({
       annotations: tool.annotations,
@@ -270,10 +302,43 @@ const runTool = async <Caller>(
   let ok = false;
   let payload: unknown;
   try {
-    const invoke = async () =>
-      normalizeResult(await tool.handler(args, context));
+    const invoke = async () => {
+      const eligibility = await commerceDecision(config, caller, name, tool);
+      if (eligibility) meta.commerceDecision = eligibility;
+      if (eligibility?.allowed === false)
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "This commerce action is unavailable in this connection.",
+            },
+          ],
+          isError: true,
+          structuredContent: {
+            type: "absolute.commerce_decision",
+            ...eligibility,
+          },
+        };
+      return normalizeResult(await tool.handler(args, context));
+    };
     let result: McpToolResult;
-    if (tool.authorization === undefined) {
+    const eligibility = await commerceDecision(config, caller, name, tool);
+    if (eligibility) meta.commerceDecision = eligibility;
+    if (eligibility?.allowed === false) {
+      result = {
+        content: [
+          {
+            type: "text",
+            text: "This commerce action is unavailable in this connection.",
+          },
+        ],
+        isError: true,
+        structuredContent: {
+          type: "absolute.commerce_decision",
+          ...eligibility,
+        },
+      };
+    } else if (tool.authorization === undefined) {
       result = await invoke();
     } else {
       const agency = config.agency;

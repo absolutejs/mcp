@@ -1,3 +1,4 @@
+import type { CommerceContext, CommerceRequirement } from "./commerce";
 // Public types for @absolutejs/mcp. A server is defined by a config object:
 // the host supplies WHICH tools/prompts/resources to expose, HOW to authorize a
 // request into a caller, and OPTIONAL per-call guards; the package owns the
@@ -140,6 +141,8 @@ export type McpToolCallContext = {
 
 /** One callable tool. `inputSchema` is a JSON Schema object. */
 export type McpTool = {
+  /** Server-owned commerce classification; fails closed without commerce context. */
+  commerce?: CommerceRequirement;
   annotations?: McpToolAnnotations;
   /** OpenID AuthZEN COAZ opt-in marker. When true, inputSchema MUST carry an
    *  `x-coaz-mapping`; hosts should evaluate it before invoking the handler. */
@@ -299,6 +302,12 @@ export type McpServerInfo = {
 };
 
 export type McpServerConfig<Caller> = {
+  /** Resolve trusted deployment policy afresh for discovery and execution.
+   * Does not replace agency approval, ownership, or payment confirmation. */
+  commerce?: (context: {
+    caller: Caller;
+    name: string;
+  }) => CommerceContext | Promise<CommerceContext>;
   /** Per-tool action policy enforcement, approval, leases, and receipts. */
   agency?: McpAgencyOptions<Caller>;
   /** Resolve the request into a caller, or a reason for the 401. The package

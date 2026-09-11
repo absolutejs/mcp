@@ -113,3 +113,7 @@ export type {
   McpToolReturn,
   McpUrlElicitationRequest,
 } from "./types";
+
+export * from "./commerce";
+
+export { createCreditBalanceTool, type McpCreditBalance } from "./creditStatus";

@@ -34,7 +34,12 @@
       "import": "./dist/manifest.js",
       "default": "./dist/manifest.js"
     },
-    "./manifest.json": "./dist/manifest.json"
+    "./manifest.json": "./dist/manifest.json",
+    "./commerce": {
+      "types": "./dist/src/commerce.d.ts",
+      "import": "./dist/commerce.js",
+      "default": "./dist/commerce.js"
+    }
   },
   "publishConfig": {
     "access": "public"
@@ -54,10 +59,11 @@
     "LICENSE",
     "README.md",
     "changelog.json",
-    "dist"
+    "dist",
+    "docs/commerce-host-rules.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && bun build src/index.ts src/manifest.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
+    "build": "rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
     "release": "bun run format && bun run test && bun run build && bun publish",
     "test": "bun test",
@@ -66,5 +72,5 @@
     "prepublishOnly": "bun run check:package"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.12.0"
+  "version": "0.13.0"
 }
