@@ -76,3 +76,20 @@ Native Windows VS Code 1.135.0 advertised Apps MIME support but omitted MCP-Prot
 Three report views rendered in the signed-in isolated Copilot workspace. Balance and usage refresh, daily expansion and receipt pagination passed. There were six report calls: three initial calls and three explicit button actions. Reloading restored the original report results with no extra report calls. All app documents measured 242px without horizontal document overflow. The first balance webview was blank until a window reload; its cause is not isolated, so this is a qualified rendering result, not proof of reliable first-load behavior. Reviewed aggregate evidence: `canary/results/2026-09-11-vscode.json`.
 
 Package regressions verify authorization before session deletion, per-request account selection, expired-session HTTP 404, and fresh explicit client initialization. HTTP failures now produce McpClientError with status (and a JSON-RPC code when available), including empty/non-JSON responses. After a session 404, call client.initialize() to negotiate a fresh session before further operations. The failed tool is never automatically replayed; callers must decide whether retrying is appropriate. Synthetic credentials prove handler behavior, not OAuth correctness or real-tenant isolation. Authenticated staging remains a separate release gate.
+
+## Authenticated two-account staging canary
+
+Import `runAuthenticatedCanary` from `@absolutejs/mcp/canary/authenticated` in a local Bun script. Supply an HTTPS endpoint, two distinct access tokens obtained through the application's normal OAuth flow, an explicitly read-only tool, and a fingerprint function selecting stable account-owned data. Credentials, fingerprints and results remain in memory; the returned report contains only check names and booleans. Keep the calling script and tokens outside the repository.
+
+```ts
+const report = await runAuthenticatedCanary({
+  url: stagingMcpUrl,
+  accounts: [firstAccessToken, secondAccessToken],
+  tool: { name: accountReadTool, arguments: {} },
+  fingerprint: (result) => JSON.stringify(result.content),
+});
+```
+
+Choose two accounts with known distinct data. The canary refuses identical results as inconclusive and verifies repeated reads remain stable. It checks both directions of session-ID substitution: rejecting the foreign session or returning the currently authenticated account's result is acceptable. It also checks missing/invalid credentials, unauthorized DELETE, authorized deletion, terminated-session 404, and fresh initialization/read. It creates and cleans up only its own MCP sessions, never purchases or modifies account data. Read-only annotations are a prerequisite, not a substitute for the operator selecting a known non-billable read tool. The current harness requires JSON RPC responses; SSE-only servers are not certified by it.
+
+This verifies the selected read path, not every tenant resource, token revocation, automatic host reconnect, or billing permissions. Session termination is explicit DELETE; timed TTL expiry needs a separate store test. Use dedicated test clients and remove their grants after verification. Do not publish tokens, transcripts, fingerprints, or raw account data.

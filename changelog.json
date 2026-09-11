@@ -3,6 +3,16 @@
   "name": "@absolutejs/mcp",
   "releases": [
     {
+      "version": "0.17.4",
+      "date": "2026-09-11",
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Ship an authenticated two-account staging canary for read isolation, credential rejection and session reconnect with private credentials and aggregate-only results"
+        }
+      ]
+    },
+    {
       "version": "0.17.3",
       "date": "2026-09-11",
       "changes": [

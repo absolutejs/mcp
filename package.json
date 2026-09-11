@@ -46,7 +46,8 @@
       "types": "./dist/src/apps.d.ts",
       "import": "./dist/apps.js",
       "default": "./dist/apps.js"
-    }
+    },
+    "./canary/authenticated": "./canary/authenticated.ts"
   },
   "publishConfig": {
     "access": "public"
@@ -83,8 +84,8 @@
     "prepublishOnly": "bun run check:package",
     "build:apps": "bun scripts/build-apps.ts",
     "canary": "bun canary/server.ts",
-    "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts"
+    "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts canary/authenticated.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.3"
+  "version": "0.17.4"
 }
