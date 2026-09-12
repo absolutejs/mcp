@@ -85,8 +85,9 @@
     "prepublishOnly": "bun run check:package",
     "build:apps": "bun scripts/build-apps.ts",
     "canary": "bun canary/server.ts",
-    "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts canary/authenticated.ts canary/vscode/check-mount.ts"
+    "check:canary": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext --target esnext --types bun canary/server.ts canary/authenticated.ts canary/vscode/check-mount.ts canary/checkout.ts",
+    "canary:checkout": "bun canary/checkout.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.6"
+  "version": "0.17.7"
 }

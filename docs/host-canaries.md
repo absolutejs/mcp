@@ -103,3 +103,62 @@ MCP 0.17.5 includes `canary/vscode/README.md`, a VS Code source patch and an exe
 The issue is tracked in [microsoft/vscode#335908](https://github.com/microsoft/vscode/issues/335908). Known affected versions now receive text and structured reports on new sessions, keeping tools usable without invoking the faulty webview path. Other hosts retain their negotiated presentation. See [UPSTREAM_ISSUES.md](../UPSTREAM_ISSUES.md) for scope and removal conditions. This workaround does not certify rich rendering on affected editors.
 
 Native Windows VS Code 1.135.0 verification: after removing the in-memory editor patch, reconnecting alone left cached UI metadata and produced resource errors. Running **MCP: Reset Cached Tools**, reloading the window and opening a new chat cleared it. The final run returned all three reports as visible text, with three successful tool calls, no resource reads and no App frames. This is a verified text fallback, not rich rendering evidence.
+
+## Synthetic external-checkout canary
+
+`bun run canary:checkout` (installed: `bun node_modules/@absolutejs/mcp/canary/checkout.ts`)
+uses the package's real checkout handoff and purchase-status tools with in-memory
+synthetic purchases. Set `CANARY_CHECKOUT_ORIGIN` to the exact HTTPS origin of a
+temporary reverse proxy to loopback port 4438. Connect the desktop test host only
+to `http://127.0.0.1:4428/mcp`. Expose only port 4438 through the proxy; it serves
+only the fixture page/state routes, never MCP. Stop both processes after testing.
+No account database, payment provider, card input or real credit ledger is used.
+Do not mount either handler in a customer application.
+
+This is an operator-authorized development test, not a live commerce approval.
+The fixture's one-hour, server-owned review applies only to synthetic links;
+never copy it into a production commerce binding. VS Code's [license §1](https://code.visualstudio.com/license)
+permits application development/testing. GitHub's [additional product terms](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features#github-copilot)
+point individual Copilot users to ToS §J and business users to their applicable
+agreement. The older Copilot product terms are archived; current volume purchases
+may instead use the [March 2026 Generative AI Services Terms](https://github.com/customer-terms/github-generative-ai-services-terms).
+Do not treat an old agreement, another product's marketplace rules, or this
+technical test as approval for every Copilot account or live digital sales.
+
+1. Request `prepare_test_checkout` with `productId: "synthetic-1000"` and approve
+   the host's tool prompt if shown. Ask for a clickable link and a
+   `get_test_purchase_status` read using the returned `purchaseId`.
+2. Confirm status is `not_started`, with zero granted credits. Click the link
+   using the host's ordinary external-link UI. The HTTPS page must clearly say
+   synthetic test, show no card fields, and require **Simulate approval**.
+3. Before clicking that button, read status again: still zero. Click once, then
+   return to chat and request status again: approved, 1,000 simulated credits.
+4. Repeat the read: still 1,000. Never let the agent approve the browser step on
+   behalf of a paying customer. This operator test contains no real payment.
+
+Links expire after 15 minutes. Capabilities travel in a URL fragment, are removed
+from the address bar on load, and are submitted only to the same checkout origin.
+Refreshing after removal intentionally requires reopening the original link.
+The fixture is bounded to 100 purchases per run. Its aggregate log excludes
+capabilities and tool arguments; keep full host transcripts private. Record the
+actual link UI, approval UI, browser navigation, before/after tool results and
+host version. This does not certify real merchant approval, OAuth continuity,
+3DS, or rich embedded payment support.
+
+### September 12 VS Code checkout observation
+
+Native Windows VS Code 1.135.0/Copilot discovered both tools, displayed link-creation
+and result-review prompts, and rendered the returned HTTPS URL as a Markdown
+anchor. Native Chrome showed the fixture page with its fragment removed. Copilot
+reported `not_started`/0 after the browser opened, then `approved`/1000 after the
+operator's simulated approval, including a second unchanged status read.
+
+**Qualified result:** mouse/keyboard activation of the Copilot anchor did not
+produce a measured checkout request in the final navigation probe. Opening the
+returned URL through the Windows HTTPS handler worked in the default Chrome
+profile. Browser state assertions used explicit navigation in a separate visible
+Chrome profile. These are separate observations: native one-click chat-to-browser
+launch is still unverified. No upstream cause has been established. Use the
+returned URL manually during development; do not advertise the seamless host
+handoff as passed. See `canary/results/vscode-checkout-2026-09-12.json` for aggregate
+evidence. No host/source patch or browser-default change was applied.

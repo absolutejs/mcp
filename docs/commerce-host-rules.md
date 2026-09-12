@@ -264,3 +264,16 @@ The first slice exports `evaluateCommerce` through `@absolutejs/mcp/commerce`, a
 The bundled rules cover the explicit restrictions established above; the broad host inventory currently maps to reviewed direct/self-hosted or unknown profiles rather than claiming every host has been verified. Missing policy, malformed categories, ambiguous restrictions, expired reviews and unavailable capabilities block the action. Deployment reviews cannot override bundled restrictions.
 
 This slice is not a general content filter: prompts, resources, untagged tools and arbitrary returned links require the shared evaluator at their own presentation boundaries. Shared renderers, native capability plumbing, checkout sessions, prepaid accounting changes and live cross-host conformance remain to implement. Existing Agency enforcement remains independent.
+
+## September 12 follow-up: native VS Code developer checkout test
+
+The directly configured VS Code/Copilot channel now has a package-owned
+[synthetic checkout canary](host-canaries.md#synthetic-external-checkout-canary).
+This is an application development test within VS Code license §1, with no real
+merchant, card input, funds or credits. It does not change the `direct-mcp`
+production default, approve Marketplace distribution, or establish permission
+for live sales under every Copilot agreement. Check the actual account's terms:
+individual Copilot uses GitHub ToS §J; volume licensing has separate current
+Generative AI Services Terms. The old Copilot product-specific terms are archived.
+The linked canary record preserves the exact native host result independently
+of commercial eligibility. Existing Claude and ChatGPT restrictions still apply.

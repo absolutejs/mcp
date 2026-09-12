@@ -1,0 +1,28 @@
+{
+  "host": "Visual Studio Code",
+  "version": "1.135.0",
+  "surface": "native Windows Copilot chat, directly configured loopback MCP",
+  "fixture": "canary/checkout.ts",
+  "date": "2026-09-12",
+  "synthetic": true,
+  "realPayments": false,
+  "results": {
+    "discoversBothTools": true,
+    "linkCreationApprovalVisible": true,
+    "toolResultReviewVisible": true,
+    "clickableMarkdownAnchor": true,
+    "nativeAnchorLaunch": "unverified: mouse and keyboard activation did not produce a measured checkout request",
+    "windowsHttpsHandlerOpensReturnedUrl": true,
+    "nativeChromeCheckoutPage": true,
+    "fragmentRemovedAfterLoad": true,
+    "beforeBrowserApproval": { "status": "not_started", "creditsGranted": 0 },
+    "afterBrowserApproval": { "status": "approved", "creditsGranted": 1000 },
+    "repeatedRead": { "status": "approved", "creditsGranted": 1000 }
+  },
+  "limits": [
+    "Native link launch remains a host-canary gate; no one-click end-to-end claim.",
+    "Browser state assertions used a second visible Chrome profile after explicit navigation to the returned URL.",
+    "No OAuth, real gateway, rich payment UI, real sales approval or marketplace distribution certified.",
+    "No checkout capability, purchase ID, card data or account credentials included."
+  ]
+}

@@ -1,161 +1,171 @@
 {
-  "contract": 1,
-  "name": "@absolutejs/mcp",
-  "releases": [
-    {
-      "version": "0.17.6",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "fixed",
-          "summary": "Use text and structured report results on affected VS Code builds while their upstream webview startup race remains unresolved"
-        },
-        {
-          "kind": "added",
-          "summary": "Allow verified patched hosts through the version fallback with optional Apps configuration",
-          "symbols": [
-            "clientSupportsMcpApps",
-            "McpAppsConfig"
-          ]
-        }
-      ]
-    },
-    {
-      "version": "0.17.5",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Distribute a verified VS Code webview startup-race source patch and actual-method regression checker, with explicit upstream delivery requirements"
-        }
-      ]
-    },
-    {
-      "version": "0.17.4",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Ship an authenticated two-account staging canary for read isolation, credential rejection and session reconnect with private credentials and aggregate-only results"
-        }
-      ]
-    },
-    {
-      "version": "0.17.3",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "fixed",
-          "summary": "Authorize session deletion, recover explicit client initialization after expiry, and preserve typed HTTP failures without replaying tools"
-        },
-        {
-          "kind": "fixed",
-          "summary": "Accept the standard protocol-header compatibility fallback used by VS Code Copilot and record native report rendering evidence"
-        }
-      ]
-    },
-    {
-      "version": "0.17.2",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Record verified Claude web rendering, refresh, pagination and narrow-viewport host canary evidence"
-        }
-      ]
-    },
-    {
-      "version": "0.17.1",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Ship a preflight-validated synthetic host canary and record Claude Code and Codex terminal interoperability evidence"
-        }
-      ]
-    },
-    {
-      "version": "0.17.0",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Negotiate MCP Apps with persisted capabilities, guarded offline UI resources and reusable SDK-backed billing views"
-        },
-        {
-          "kind": "added",
-          "summary": "Preserve remote UI metadata in the client and expose immutable PostgreSQL migration entries"
-        },
-        {
-          "kind": "changed",
-          "summary": "Extend McpClientOptions, McpRemoteTool, createSessionRegistry, McpSessionStore, McpServerConfig, McpTool and McpToolResult with optional Apps capability and metadata fields; existing text-only callers remain supported",
-          "symbols": [
-            "McpClientOptions",
-            "McpRemoteTool",
-            "createSessionRegistry",
-            "McpSessionStore",
-            "McpServerConfig",
-            "McpTool",
-            "McpToolResult"
-          ]
-        }
-      ]
-    },
-    {
-      "version": "0.16.0",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Add account-bound billing status, paginated receipts, bounded usage and reviewed billing-management links"
-        }
-      ]
-    },
-    {
-      "version": "0.15.1",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "fixed",
-          "summary": "Build and test before publishing so checkout exports are present in the distributed artifact"
-        }
-      ]
-    },
-    {
-      "version": "0.15.0",
-      "date": "2026-09-11",
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Add commerce-classified account-bound checkout handoff and purchase status tools"
-        }
-      ]
-    },
-    {
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Add explicit credit-budget envelopes for durable prepaid MCP work"
-        }
-      ],
-      "date": "2026-09-11",
-      "version": "0.14.0"
-    },
-    {
-      "changes": [
-        {
-          "kind": "added",
-          "summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
-          "symbols": [
-            "McpServerConfig",
-            "McpTool",
-            "evaluateCommerce",
-            "createCreditBalanceTool"
-          ]
-        }
-      ],
-      "date": "2026-09-11",
-      "version": "0.13.0"
-    }
-  ]
+	"contract": 1,
+	"name": "@absolutejs/mcp",
+	"releases": [
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Ship a synthetic external-checkout host canary with expiring links, explicit approval and purchase-status checks"
+				}
+			],
+			"date": "2026-09-12",
+			"version": "0.17.7"
+		},
+		{
+			"changes": [
+				{
+					"kind": "fixed",
+					"summary": "Use text and structured report results on affected VS Code builds while their upstream webview startup race remains unresolved"
+				},
+				{
+					"kind": "added",
+					"summary": "Allow verified patched hosts through the version fallback with optional Apps configuration",
+					"symbols": [
+						"clientSupportsMcpApps",
+						"McpAppsConfig"
+					]
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.6"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Distribute a verified VS Code webview startup-race source patch and actual-method regression checker, with explicit upstream delivery requirements"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.5"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Ship an authenticated two-account staging canary for read isolation, credential rejection and session reconnect with private credentials and aggregate-only results"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.4"
+		},
+		{
+			"changes": [
+				{
+					"kind": "fixed",
+					"summary": "Authorize session deletion, recover explicit client initialization after expiry, and preserve typed HTTP failures without replaying tools"
+				},
+				{
+					"kind": "fixed",
+					"summary": "Accept the standard protocol-header compatibility fallback used by VS Code Copilot and record native report rendering evidence"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.3"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Record verified Claude web rendering, refresh, pagination and narrow-viewport host canary evidence"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.2"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Ship a preflight-validated synthetic host canary and record Claude Code and Codex terminal interoperability evidence"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.1"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Negotiate MCP Apps with persisted capabilities, guarded offline UI resources and reusable SDK-backed billing views"
+				},
+				{
+					"kind": "added",
+					"summary": "Preserve remote UI metadata in the client and expose immutable PostgreSQL migration entries"
+				},
+				{
+					"kind": "changed",
+					"summary": "Extend McpClientOptions, McpRemoteTool, createSessionRegistry, McpSessionStore, McpServerConfig, McpTool and McpToolResult with optional Apps capability and metadata fields; existing text-only callers remain supported",
+					"symbols": [
+						"McpClientOptions",
+						"McpRemoteTool",
+						"createSessionRegistry",
+						"McpSessionStore",
+						"McpServerConfig",
+						"McpTool",
+						"McpToolResult"
+					]
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.17.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add account-bound billing status, paginated receipts, bounded usage and reviewed billing-management links"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.16.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "fixed",
+					"summary": "Build and test before publishing so checkout exports are present in the distributed artifact"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.15.1"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add commerce-classified account-bound checkout handoff and purchase status tools"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.15.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add explicit credit-budget envelopes for durable prepaid MCP work"
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.14.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
+					"symbols": [
+						"McpServerConfig",
+						"McpTool",
+						"evaluateCommerce",
+						"createCreditBalanceTool"
+					]
+				}
+			],
+			"date": "2026-09-11",
+			"version": "0.13.0"
+		}
+	]
 }
