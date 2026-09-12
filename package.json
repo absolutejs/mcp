@@ -73,7 +73,8 @@
     "docs/third-party",
     "canary",
     "docs/host-canaries.md",
-    "UPSTREAM_ISSUES.md"
+    "UPSTREAM_ISSUES.md",
+    "docs/reviews"
   ],
   "scripts": {
     "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
@@ -89,5 +90,5 @@
     "canary:checkout": "bun canary/checkout.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.7"
+  "version": "0.17.8"
 }

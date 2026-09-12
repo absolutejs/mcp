@@ -153,12 +153,22 @@ anchor. Native Chrome showed the fixture page with its fragment removed. Copilot
 reported `not_started`/0 after the browser opened, then `approved`/1000 after the
 operator's simulated approval, including a second unchanged status read.
 
-**Qualified result:** mouse/keyboard activation of the Copilot anchor did not
-produce a measured checkout request in the final navigation probe. Opening the
-returned URL through the Windows HTTPS handler worked in the default Chrome
-profile. Browser state assertions used explicit navigation in a separate visible
-Chrome profile. These are separate observations: native one-click chat-to-browser
-launch is still unverified. No upstream cause has been established. Use the
-returned URL manually during development; do not advertise the seamless host
-handoff as passed. See `canary/results/vscode-checkout-2026-09-12.json` for aggregate
-evidence. No host/source patch or browser-default change was applied.
+**Corrected after a complete native rerun:** the previous test missed a Windows
+native `#32770` dialog asking whether Code should open the external website. It
+is outside the CDP page DOM: `getByRole("dialog")` returning zero did not mean no
+prompt existed. Several previous clicks had queued confirmations. Dismissing
+stale test prompts and choosing **Open** for the fresh expected origin produced
+checkout GET and state POST responses. Windows accessibility verified the actual
+default Chrome page, then the operator explicitly invoked its **Simulate approval**
+button. Copilot read zero before that click and approved/1000 twice afterward.
+No manual URL navigation was needed in this final run.
+
+Use Windows native dialog inspection when a click appears inert; do not repeatedly
+click, change trusted domains, or patch the editor to bypass the prompt. Preserve
+normal per-link consent. This was a test-automation gap, not an established host
+link defect. See `canary/results/vscode-checkout-2026-09-12.json` for the corrected
+aggregate evidence. The separate rich-view startup issue is unchanged.
+
+The [individual Copilot external-checkout review](reviews/vscode-individual-external-checkout.md)
+records the exact eligible deployment scope and activation conditions; the
+synthetic fixture is not a real merchant/OAuth acceptance test.

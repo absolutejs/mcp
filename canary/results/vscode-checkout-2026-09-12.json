@@ -11,18 +11,30 @@
     "linkCreationApprovalVisible": true,
     "toolResultReviewVisible": true,
     "clickableMarkdownAnchor": true,
-    "nativeAnchorLaunch": "unverified: mouse and keyboard activation did not produce a measured checkout request",
+    "nativeAnchorLaunch": true,
     "windowsHttpsHandlerOpensReturnedUrl": true,
     "nativeChromeCheckoutPage": true,
     "fragmentRemovedAfterLoad": true,
-    "beforeBrowserApproval": { "status": "not_started", "creditsGranted": 0 },
-    "afterBrowserApproval": { "status": "approved", "creditsGranted": 1000 },
-    "repeatedRead": { "status": "approved", "creditsGranted": 1000 }
+    "beforeBrowserApproval": {
+      "status": "not_started",
+      "creditsGranted": 0
+    },
+    "afterBrowserApproval": {
+      "status": "approved",
+      "creditsGranted": 1000
+    },
+    "repeatedRead": {
+      "status": "approved",
+      "creditsGranted": 1000
+    },
+    "nativeWindowsExternalSiteConfirmation": true,
+    "sameDefaultBrowserApproval": true
   },
   "limits": [
-    "Native link launch remains a host-canary gate; no one-click end-to-end claim.",
-    "Browser state assertions used a second visible Chrome profile after explicit navigation to the returned URL.",
-    "No OAuth, real gateway, rich payment UI, real sales approval or marketplace distribution certified.",
+    "Synthetic credits only; no real gateway or OAuth certified.",
+    "No editor patch, trusted-domain setting or browser default changed.",
+    "Rich payment UI and marketplace distribution are not certified.",
     "No checkout capability, purchase ID, card data or account credentials included."
-  ]
+  ],
+  "correction": "Earlier unverified result missed a native Windows #32770 external-site confirmation outside the CDP DOM. Full rerun used the native Open prompt and the same default Chrome page."
 }

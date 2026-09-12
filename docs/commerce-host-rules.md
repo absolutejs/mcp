@@ -277,3 +277,13 @@ individual Copilot uses GitHub ToS §J; volume licensing has separate current
 Generative AI Services Terms. The old Copilot product-specific terms are archived.
 The linked canary record preserves the exact native host result independently
 of commercial eligibility. Existing Claude and ChatGPT restrictions still apply.
+
+## September 12 individual Copilot external-checkout review
+
+The operator confirmed an individual subscription. The [scoped review](reviews/vscode-individual-external-checkout.md)
+concludes that user-requested, service-owned HTTPS credit checkout is eligible
+for an explicit deployment binding, with a dated interpretation and exact
+conditions. This does not change the global direct-MCP default. The complete
+native handoff now passes after accounting for Windows' external-site dialog;
+no link defect or need for an upstream link fix was established. Rich-view
+startup remains a separate tracked issue.
