@@ -5,6 +5,16 @@
 		{
 			"changes": [
 				{
+					"kind": "added",
+					"summary": "Document scoped individual Copilot paid-work eligibility and deployment budget requirements"
+				}
+			],
+			"date": "2026-09-12",
+			"version": "0.17.9"
+		},
+		{
+			"changes": [
+				{
 					"kind": "fixed",
 					"summary": "Correct the VS Code checkout canary after verifying native Windows link consent and document the individual Copilot channel review"
 				}

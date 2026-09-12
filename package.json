@@ -90,5 +90,5 @@
     "canary:checkout": "bun canary/checkout.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.17.8"
+  "version": "0.17.9"
 }

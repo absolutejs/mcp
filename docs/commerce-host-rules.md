@@ -287,3 +287,12 @@ conditions. This does not change the global direct-MCP default. The complete
 native handoff now passes after accounting for Windows' external-site dialog;
 no link defect or need for an upstream link fix was established. Rich-view
 startup remains a separate tracked issue.
+
+## September 12 individual Copilot paid-work review
+
+The [bounded paid-work review](reviews/vscode-individual-paid-work.md) separately
+covers user-requested service work funded by existing service credits for the
+reviewed individual Copilot direct-MCP channel. Deployments must bind the exact
+registration/account and enforce budgets, retries and recovery. It expires
+October 12, 2026. It does not enable the shared default or expand checkout,
+organization-account or other-host eligibility.
