@@ -3,3 +3,5 @@ dist
 *.log
 
 src/billingApp.generated.ts
+
+src/workflowApp.generated.ts
