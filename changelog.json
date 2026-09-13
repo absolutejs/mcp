@@ -6,6 +6,19 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Preserve saved credit work results in identical text and structured host responses",
+					"symbols": [
+						"createCreditWorkResult"
+					]
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.23.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Display complete action-specific review terms and respect per-action approval availability",
 					"symbols": [
 						"ActionReview",

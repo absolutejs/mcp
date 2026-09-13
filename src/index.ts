@@ -158,4 +158,16 @@ export {
   type SetupOption,
 } from "./setupSelection";
 
-export { createActionWorkflowTools, projectActionReview, projectActionJob, type ActionReview, type ActionConfirmation, type ActionJob } from "./actionWorkflow";
+export {
+  createActionWorkflowTools,
+  projectActionReview,
+  projectActionJob,
+  type ActionReview,
+  type ActionConfirmation,
+  type ActionJob,
+} from "./actionWorkflow";
+
+export {
+  createCreditWorkResult,
+  type McpCreditWorkSnapshot,
+} from "./creditWorkResult";

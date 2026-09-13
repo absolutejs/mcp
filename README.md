@@ -437,3 +437,27 @@ on the Change Date.
 ## Interactive MCP Apps
 
 `createBillingApps()` adds reusable read-only credit, usage and receipt views with the official browser SDK. Apps capability negotiation, guarded resources and text fallbacks live in the package. See [MCP Apps](docs/mcp-apps.md) for integration, session migration, CSP restrictions and host validation boundaries.
+
+### Saved credit-work results
+
+Use `createCreditWorkResult(requestId, work)` for initial completion, duplicate
+requests and read-only recovery. Pass the account-bound saved `budget`, `charged`,
+`status` and `result`; extra database fields are not projected. Both MCP `content`
+and `structuredContent` carry the same JSON envelope:
+
+```json
+{
+  "requestId": "proposal-1",
+  "status": "completed",
+  "maxCredits": 1,
+  "creditsCharged": 0,
+  "result": { "actionId": "action-1", "status": "proposed" }
+}
+```
+
+Read the tool outcome under `result`; the outer `status` describes credit work,
+not action approval or delivery. Saved JSON is decoded once; plain text remains
+a string, and serialized MCP results remain nested without discarding content.
+The formatter never retries work. A missing saved result carries a same-ID polling
+instruction. Bind account identity and authorization before retrieving the saved
+work; this helper does not authorize access or filter the tool's saved payload.
