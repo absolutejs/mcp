@@ -6,6 +6,16 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Add shared reviewed business selection tools and an MCP App with explicit revision-bound confirmation."
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.19.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Add read-only setup and budget-preview tools with shared Apps and text fallbacks"
 				}
 			],

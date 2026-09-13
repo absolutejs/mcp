@@ -14,8 +14,11 @@ const bridge = new AppBridge(
   { hostContext: { theme: "light", displayMode: "inline" } },
 );
 let calls = 0;
-const result = async (args: Record<string, unknown> = {}) => {
-  const response = await fetch(`/fixture?view=${kind}`, {
+const result = async (
+  args: Record<string, unknown> = {},
+  name = "get_setup_options",
+) => {
+  const response = await fetch(`/fixture?view=${kind}&tool=${name}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(args),
@@ -30,10 +33,15 @@ bridge.oncalltool = async (params) => {
     usage: "get_usage_report",
     receipts: "list_receipts",
   };
-  if (params.name !== names[kind]) throw Error("Unexpected tool");
+  if (
+    kind === "selection"
+      ? !["get_setup_options", "confirm_setup_selection"].includes(params.name)
+      : params.name !== names[kind]
+  )
+    throw Error("Unexpected tool");
   calls++;
   document.documentElement.dataset.calls = String(calls);
-  return result(params.arguments);
+  return result(params.arguments, params.name);
 };
 bridge.oninitialized = async () => {
   await bridge.sendToolInput({ arguments: {} });

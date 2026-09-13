@@ -1,5 +1,33 @@
 import { createWorkflowApps } from "../../src/workflowApps";
 import { createWorkflowTools } from "../../src/workflowTools";
+import {
+  createSetupSelectionTools,
+  type SetupSelection,
+} from "../../src/setupSelection";
+let state: SetupSelection = {
+  revision: "one",
+  selectedId: null,
+  options: [
+    { id: "owned", label: "Example business <script>not markup</script>" },
+  ],
+};
+let writes = 0;
+const selectionTools = createSetupSelectionTools({
+  read: async () => state,
+  confirm: async (request) => {
+    if (request.expectedRevision !== state.revision)
+      throw Error("Stale revision");
+    if (request.selectedId !== null && request.selectedId !== "owned")
+      throw Error("Foreign option");
+    writes++;
+    state = {
+      ...state,
+      revision: String(writes + 1),
+      selectedId: request.selectedId,
+    };
+    return state;
+  },
+});
 const apps = createWorkflowApps();
 const tools = createWorkflowTools({
   operations: ["read_business"],
@@ -28,6 +56,7 @@ Bun.serve({
   port: 4418,
   fetch: async (request) => {
     const url = new URL(request.url);
+    if (url.pathname === "/counts") return Response.json({ writes });
     if (url.pathname === "/host.js")
       return new Response(host, {
         headers: { "content-type": "text/javascript" },
@@ -49,7 +78,10 @@ Bun.serve({
     if (url.pathname === "/fixture") {
       const preview = url.searchParams.get("view") === "preview";
       const args = await request.json();
-      const tool = tools[preview ? "preview_credit_work" : "get_setup_status"]!;
+      const tool =
+        url.searchParams.get("view") === "selection"
+          ? selectionTools[url.searchParams.get("tool") ?? "get_setup_options"]!
+          : tools[preview ? "preview_credit_work" : "get_setup_status"]!;
       return Response.json(
         await tool.handler(
           preview && !Object.keys(args).length

@@ -82,3 +82,22 @@ operation and budget. Errors clear stale eligibility and point back to the assis
 Known affected VS Code builds retain the shared text fallback. The visible-browser
 fixture is `bun test/fixtures/workflowServer.ts` (loopback port 4418); it uses zero
 credits and no gateway or database.
+
+### Reviewed setup selection
+
+`createSetupSelectionTools({ read, confirm })` exposes `get_setup_options` and
+`confirm_setup_selection`; `createWorkflowApps()` supplies the selection view.
+The adapter returns `{ revision, selectedId, options: [{ id, label }] }`, with
+`null` selecting all businesses. It must bind the authenticated account itself.
+`confirm({ expectedRevision, selectedId })` must atomically compare the reviewed
+revision, validate ownership, change selection, and advance the revision. Every
+other selection writer must advance it too, including A → B → A. The package
+validates and projects values but cannot provide database atomicity for adapters.
+
+The view makes no call on mount. Review and Cancel are local; Confirm sends the
+exact reviewed revision and selection once. Errors discard review state and
+require a fresh read. Text-only hosts receive the same options/revision and must
+obtain explicit approval before invoking the write tool. This is a reversible
+setup action with no billing or outbound effects; it does not authorize paid
+work. At most 200 options are supported; IDs/revisions are bounded at 128
+characters and labels at 512. No account selector or credentials enter the view.

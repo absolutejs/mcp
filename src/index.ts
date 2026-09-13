@@ -149,3 +149,11 @@ export {
   type McpWorkPreview,
   type McpWorkPreviewRequest,
 } from "./workflowTools";
+
+export {
+  createSetupSelectionTools,
+  projectSetupSelection,
+  type SetupSelection,
+  type SetupConfirmation,
+  type SetupOption,
+} from "./setupSelection";

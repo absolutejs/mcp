@@ -87,7 +87,7 @@ test("projection omits private callback fields and rejects mismatched preview", 
     ),
   ).rejects.toThrow("does not match");
   const apps = createWorkflowApps();
-  expect(Object.keys(apps.resources)).toHaveLength(2);
+  expect(Object.keys(apps.resources)).toHaveLength(3);
   expect(apps.decorateTools(tools).get_setup_status!.ui?.resourceUri).toBe(
     "ui://absolute-workflow/setup.html",
   );
