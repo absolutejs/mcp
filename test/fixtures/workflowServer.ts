@@ -38,6 +38,10 @@ const actionTools = createActionWorkflowTools({
     title: "Synthetic outreach",
     expiresAt: "2099-01-01T00:00:00Z",
     recipients: ["nobody@example.test"],
+    details: [
+      { label: "Starts (UTC)", value: "2099-01-01T15:00:00.000Z" },
+      { label: "Conference", value: "<script>inert details</script>" },
+    ],
     subject: "Synthetic subject",
     body: "<script>inert</script>\nFull reviewed message.",
     consequence: "Synthetic fixture only; no email can be sent.",

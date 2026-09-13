@@ -1,6 +1,8 @@
 import { isRecord } from "./guards";
 import type { McpToolRegistry, McpToolResult } from "./types";
 export type ActionReview = {
+  /** Complete action-specific terms; adapters bind these to the reviewed revision. */
+  details?: Array<{ label: string; value: string }>;
   maxCredits?: number;
   /** Set by the tool factory from the available confirmation capability. */
   canConfirm?: boolean;
@@ -64,12 +66,26 @@ export const projectActionReview = (value: unknown): ActionReview => {
     value.recipients.length > 100
   )
     throw Error("Invalid review");
+  const details = value.details;
+  if (details !== undefined && (!Array.isArray(details) || details.length > 32))
+    throw Error("Invalid review details");
   const expiresAt = text(value.expiresAt);
   if (!Number.isFinite(Date.parse(expiresAt)))
     throw Error("Invalid review expiry");
   return {
     ...(value.maxCredits !== undefined
       ? { maxCredits: budget(value.maxCredits) }
+      : {}),
+    ...(Array.isArray(details)
+      ? {
+          details: details.map((detail) => {
+            if (!isRecord(detail)) throw Error("Invalid review detail");
+            return {
+              label: text(detail.label, 128),
+              value: text(detail.value, 8000),
+            };
+          }),
+        }
       : {}),
     canConfirm: value.canConfirm === true,
     actionId: text(value.actionId, 128),
@@ -170,7 +186,7 @@ export const createActionWorkflowTools = (adapter: {
         properties: { ...inputSchema.properties, maxCredits: budgetSchema },
       },
       description:
-        "Read the exact recipients, subject, message, consequences, revision and expiry of one owned pending action. No approval or send. For prepaid approval supply the user-chosen maxCredits and show its hold/charge limit along with the complete review before asking for approval.",
+        "Read the exact recipients, subject, message, action-specific details, consequences, revision and expiry of one owned pending action. No approval or send. For prepaid approval supply the user-chosen maxCredits and show its hold/charge limit along with the complete review before asking for approval.",
       handler: async (args) => {
         if (
           !isRecord(args) ||
@@ -179,9 +195,11 @@ export const createActionWorkflowTools = (adapter: {
           throw Error("Invalid review arguments");
         const actionId = text(args.actionId, 128),
           maxCredits = budget(args.maxCredits);
+        const review = await adapter.review(actionId, maxCredits);
         const data = projectActionReview({
-          ...(await adapter.review(actionId, maxCredits)),
+          ...review,
           canConfirm:
+            review.canConfirm !== false &&
             Boolean(adapter.confirm) &&
             (!adapter.requiresBudget || maxCredits !== undefined),
         });
@@ -236,7 +254,7 @@ export const createActionWorkflowTools = (adapter: {
               additionalProperties: false,
             },
             description:
-              "Approve and queue exactly the reviewed version of an outbound action, only after the user explicitly approves its complete recipients, message, consequences and any maxCredits reservation. Echo the reviewed maxCredits exactly. This may SEND outside the service. Do not call on render, inference or automatic retry. Stale/expired/already-decided approvals fail; use get_action_job after an uncertain response.",
+              "Approve and queue exactly the reviewed version of an outbound action, only after the user explicitly approves its complete recipients, message, action-specific details, consequences and any maxCredits reservation. Echo the reviewed maxCredits exactly. This may SEND outside the service. Do not call on render, inference or automatic retry. Stale/expired/already-decided approvals fail; use get_action_job after an uncertain response.",
             handler: async (args: unknown) => {
               if (
                 !isRecord(args) ||

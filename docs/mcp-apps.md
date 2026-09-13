@@ -142,3 +142,16 @@ The shared App displays the hold, charge ceiling and uncertain-outcome behavior
 before approval, then carries the budget unchanged to confirmation. Job results
 may show projected `creditUsage` (work ID, maximum, charged amount and reserved or
 settled state). Read/resume/refresh never reserve, settle or retry execution.
+
+### Action-specific approval terms
+
+`ActionReview.details` carries bounded, labeled terms such as a calendar's exact
+start/end times, target calendar and conference choice. Both structured/text
+results and the shared review App include every term. Labels and values render
+as text. The adapter must bind these terms to `revision` and use the same terms
+at execution; the App cannot validate a provider-specific action for it.
+
+An adapter may return `canConfirm: false` for an individual action even when it
+implements confirmation for other kinds. The factory preserves that restriction
+and still enforces the adapter's general capability and explicit prepaid budget.
+The adapter must independently reject disabled kinds at confirmation time.

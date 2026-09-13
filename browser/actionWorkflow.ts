@@ -80,6 +80,9 @@ const render = (result: unknown) => {
         el("p", `To: ${review.recipients.join(", ")}`),
         el("h3", review.subject),
         el("pre", review.body),
+        ...(review.details ?? []).map((detail) =>
+          el("p", `${detail.label}: ${detail.value}`),
+        ),
         el("p", review.consequence),
         el("p", `Approval expires: ${review.expiresAt}`),
       );
@@ -154,7 +157,7 @@ reviewButton.onclick = () => {
   }
   pending = true;
   warning.textContent =
-    "Approving queues this exact message to the recipients shown above. It can send outside this service. Cancel to leave it unapproved.";
+    "Approving queues this exact action with the recipients and details shown above. It can send outside this service. Cancel to leave it unapproved.";
   controls();
 };
 cancel.onclick = clear;

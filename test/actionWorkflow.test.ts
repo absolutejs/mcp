@@ -184,3 +184,43 @@ test("prepaid approval preserves the explicit reviewed budget and paid-access po
   });
   expect(writes).toBe(1);
 });
+
+test("action-specific terms are bounded, preserved and cannot enable a disabled review", async () => {
+  const details = [{ label: "Starts", value: "2099-01-01T10:00:00Z" }];
+  expect(projectActionReview({ ...review, details })).toMatchObject({
+    details,
+  });
+  for (const invalid of [
+    null,
+    {},
+    [{ label: "", value: "x" }],
+    [{ label: "x", value: "" }],
+    Array(33).fill(details[0]),
+  ])
+    expect(() =>
+      projectActionReview({ ...review, details: invalid }),
+    ).toThrow();
+  let writes = 0;
+  const tools = createActionWorkflowTools({
+    review: async () => ({ ...review, details, canConfirm: false }),
+    job: async () => ({
+      actionId: "one",
+      status: "queued",
+      title: "Invite",
+      summary: "Queued",
+    }),
+    confirm: async () => {
+      writes++;
+      throw Error("disabled by adapter");
+    },
+  });
+  const result = await tools.get_action_review!.handler(
+    { actionId: "one" },
+    ctx,
+  );
+  expect(result).toMatchObject({
+    structuredContent: { details, canConfirm: false },
+  });
+  expect(JSON.stringify(result)).toContain("2099-01-01T10:00:00Z");
+  expect(writes).toBe(0);
+});
