@@ -70,3 +70,13 @@ export const appResourceContent = (resource: McpAppResource, uri: string) => {
 };
 
 export { createBillingApps } from "./billingApps";
+
+export { createWorkflowApps } from "./workflowApps";
+export {
+  createWorkflowTools,
+  projectSetupStatus,
+  projectWorkPreview,
+  type McpSetupStatus,
+  type McpWorkPreview,
+  type McpWorkPreviewRequest,
+} from "./workflowTools";

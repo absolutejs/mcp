@@ -58,3 +58,27 @@ Primary references checked September 11, 2026: [stable Apps specification](https
 ## Real-host canaries
 
 See [the reusable host canary and observed results](host-canaries.md) for isolated connection instructions, acceptance criteria and remaining rollout gates.
+
+## Read-only setup and work previews
+
+`createWorkflowTools` binds authenticated setup and preview readers; `createWorkflowApps`
+decorates those tools and supplies offline resources. Merge its resources into the
+server Apps configuration alongside billing resources. Both tools return text and
+projected structured data when no Apps capability is negotiated. Setup reports
+business context, portal access and available credits. Preview requires an allowed
+operation and a positive proposed maximum, reports current eligibility, and never
+reserves or executes. A maximum is not a price estimate or approval.
+
+Readers must close over the authenticated account and resolve domain ownership.
+Unknown operations and extra arguments (including account IDs) reject before reads.
+The package strips extra reader fields. There is no executor callback. Consumers
+keep these tools outside the zero-credit work gate with a bounded read rate limit.
+Execution independently validates authorization, balance, stable work ID and budget.
+Neither view contains checkout links, setup mutations or outbound actions.
+
+The official Apps bridge delivers initial results without automatic tool calls.
+Only explicit Refresh invokes the same read tool; preview refresh preserves the
+operation and budget. Errors clear stale eligibility and point back to the assistant.
+Known affected VS Code builds retain the shared text fallback. The visible-browser
+fixture is `bun test/fixtures/workflowServer.ts` (loopback port 4418); it uses zero
+credits and no gateway or database.

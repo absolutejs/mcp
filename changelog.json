@@ -6,6 +6,16 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Add read-only setup and budget-preview tools with shared Apps and text fallbacks"
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.18.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Document scoped individual Copilot paid-work eligibility and deployment budget requirements"
 				}
 			],
