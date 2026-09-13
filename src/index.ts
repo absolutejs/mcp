@@ -175,3 +175,5 @@ export {
 export { createBackgroundWorkTools, createBackgroundWorkResult, type McpBackgroundWorkSnapshot } from "./backgroundWork";
 
 export type { McpBackgroundWorkEstimate } from "./backgroundWork";
+
+export { registeredMcpProfiles, registeredMcpCommerce } from "./registeredCommerce";

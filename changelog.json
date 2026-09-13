@@ -6,6 +6,20 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Resolve shared commerce policy from authenticated registered callback channels without per-account canary bindings.",
+					"symbols": [
+						"registeredMcpProfiles",
+						"registeredMcpCommerce"
+					]
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.26.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Add estimate-based background work admission while preserving exact-ID recovery and hard charge caps.",
 					"symbols": [
 						"McpBackgroundWorkEstimate",
