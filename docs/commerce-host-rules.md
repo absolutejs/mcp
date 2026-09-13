@@ -296,3 +296,75 @@ reviewed individual Copilot direct-MCP channel. Deployments must bind the exact
 registration/account and enforce budgets, retries and recovery. It expires
 October 12, 2026. It does not enable the shared default or expand checkout,
 organization-account or other-host eligibility.
+
+## Launch evidence checklist — September 12, 2026
+
+This checklist separates reusable package guarantees from deployment activation.
+The September 10 survey remains the full host inventory; this follow-up rechecked
+the highest-priority restrictions and existing Copilot review boundary. It does
+not certify the untested hosts or broaden any executable commerce profile.
+
+### Current source checks
+
+- Claude still documents purchases through interactive connectors as unsupported.
+  Its help page does not settle the separate external credit-checkout question.
+  Keep that flow unverified pending clarification; non-commerce report rendering
+  is a separate capability. [Claude help](https://support.claude.com/en/articles/13454812-use-interactive-connectors-in-claude).
+- ChatGPT plugin guidelines still exclude digital-credit sales and transactional
+  links. Entitlement explanations and informational destinations are distinct
+  from purchase initiation. Do not turn an informational destination into an
+  automatic checkout redirect. [Plugin guidelines](https://developers.openai.com/plugins/app-guidelines#commerce-and-monetization).
+- Direct Codex documents remote MCP and OAuth. That technical documentation alone
+  does not establish commerce eligibility for a particular account/distribution.
+  Keep its separate review pending; neither automatically apply hosted-plugin
+  rules to every direct connection nor infer an exemption.
+  [Direct MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+- Cursor Marketplace still excludes direct and indirect plugin-access fees in
+  section 3.1. Review directly configured MCP separately; a working connection
+  does not resolve the marketplace restriction.
+  [Publisher terms](https://cursor.com/marketplace-publisher-terms).
+- GitHub still directs individual Copilot users to ToS section J and Business /
+  Enterprise users to different terms. The two scoped individual Copilot reviews
+  remain the package's interpretation, expiring October 12, 2026; this check
+  does not extend their expiry or authorize organization accounts.
+  [Applicable agreements](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features#github-copilot).
+- VS Code issue #335908 remains open. Retain the tested affected-version fallback
+  until a released editor passes the documented fresh-load and remount tests.
+  [Upstream issue](https://github.com/microsoft/vscode/issues/335908).
+
+### Evidence required for each advertised host
+
+| Gate | Required evidence | Owner |
+| --- | --- | --- |
+| Distribution and policy | Exact host surface, account agreement, category, actions, official sources, dated interpretation and expiry | Package review; deployment supplies verified binding |
+| Authentication | Real signup/consent return, exact registration/account, refresh, revoked access and cross-account rejection | Auth package primitives and consumer integration |
+| Presentation | Installed version, actual negotiated capabilities, visible first load, refresh, pagination and text fallback | MCP package fixture; real host test |
+| Funded access | Subscription-free access, portal denial, explicit budget, settlement, retry conflict and recovery at zero | Billing package and consumer services |
+| Checkout, if eligible | Own HTTPS origin, explicit browser confirmation, server-priced intent, idempotent grant and uncertain-outcome recovery | Shared handoff plus consumer gateway |
+| Work effects | Immutable approval version, ownership, expiry, repeat-safe execution and durable status; rendering performs no action | Shared workflow contract and consumer handler |
+| Operations | Manual or automated validation, deployment readiness, reconciliation, support procedure and rollback preserving financial records | Consumer deployment |
+
+Mark each gate **passed**, **qualified**, **pending** or **not offered**, with a
+link to evidence. A successful report fixture is not OAuth certification; a
+successful payment is not proof of paid model metering. Never count a member or
+complimentary account as a production subscription-free canary. No additional
+live charge is required merely to review or document a host.
+
+The package commerce regression suite was rerun: 18 tests / 43 assertions passed,
+including discovery/execution guards, policy rechecks, restrictive profile
+intersection, expiry, spoofed metadata and failure handling. This is regression
+evidence for the policy mechanism, not vendor approval or a live host test.
+
+### Recommended implementation order for consumers
+
+Build non-commerce setup and work previews using shared Apps primitives and
+identical structured/text contracts first. Then add version-bound approval and
+durable results, followed by attributed spend/outcome reporting. Bind each
+consumer's domain services rather than duplicating policy, ledger or bridge
+code. Test an eligible conversational, IDE and terminal channel separately;
+record unavailable hosts as pending. Keep deferred background effects outside
+bounded work until their reservation and recovery lifecycle is implemented.
+
+This documentation update changes no runtime API, profile, feature flag or
+published package version. It is available in the shared repository and will
+ship with the next package release through the existing documentation allowlist.
