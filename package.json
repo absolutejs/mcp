@@ -1,6 +1,6 @@
 {
   "author": "Alex Kahn",
-  "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry — OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
+  "description": "Serve a remote Model Context Protocol endpoint (streamable HTTP, stateless) from a tool/prompt/resource registry \u2014 OAuth bearer auth, RFC 9728 discovery, and per-call guards are yours to wire, the JSON-RPC protocol is done correctly by construction.",
   "devDependencies": {
     "@absolutejs/agency": "0.7.1",
     "@absolutejs/changelog": "^0.6.0",
@@ -90,5 +90,5 @@
     "canary:checkout": "bun canary/checkout.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.26.0"
+  "version": "0.26.1"
 }

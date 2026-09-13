@@ -12,7 +12,7 @@ export const registeredMcpProfiles = (redirectUris: readonly string[]): Commerce
       if (url.protocol === "https:" && ["chatgpt.com", "chat.openai.com"].includes(url.hostname)) return "chatgpt-plugin";
       if (["http:", "https:"].includes(url.protocol) && ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname)) return "direct-mcp";
       if (["vscode:", "vscode-insiders:", "cursor:", "windsurf:"].includes(url.protocol)) return "direct-mcp";
-      if (url.origin === "https://vscode.dev" && url.pathname === "/redirect") return "direct-mcp";
+      if (["https://vscode.dev", "https://insiders.vscode.dev"].includes(url.origin) && url.pathname === "/redirect") return "direct-mcp";
       return "unknown";
     } catch { return "unknown"; }
   };

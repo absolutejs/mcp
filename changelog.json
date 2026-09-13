@@ -5,6 +5,19 @@
 		{
 			"changes": [
 				{
+					"kind": "fixed",
+					"summary": "Recognize the exact VS Code Insiders OAuth redirect alongside stable VS Code; retain unknown-host rejection.",
+					"symbols": [
+						"registeredMcpProfiles"
+					]
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.26.1"
+		},
+		{
+			"changes": [
+				{
 					"kind": "added",
 					"summary": "Resolve shared commerce policy from authenticated registered callback channels without per-account canary bindings.",
 					"symbols": [
