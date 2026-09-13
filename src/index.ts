@@ -171,3 +171,5 @@ export {
   createCreditWorkResult,
   type McpCreditWorkSnapshot,
 } from "./creditWorkResult";
+
+export { createBackgroundWorkTools, createBackgroundWorkResult, type McpBackgroundWorkSnapshot } from "./backgroundWork";

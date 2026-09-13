@@ -461,3 +461,23 @@ a string, and serialized MCP results remain nested without discarding content.
 The formatter never retries work. A missing saved result carries a same-ID polling
 instruction. Bind account identity and authorization before retrieving the saved
 work; this helper does not authorize access or filter the tool's saved payload.
+
+## Budgeted background work
+
+`createBackgroundWorkTools({ description, inputSchema, start, read })` exposes
+`start_background_work` with a stable requestId and maximum service credits, plus
+read-only `get_background_work` recovery. Omit `start` to support recovery at zero
+credits or while rollout is disabled. Account ownership must come from the
+authenticated caller, never tool arguments.
+
+The start adapter must atomically reserve credits, bind immutable work and enqueue
+a durable job; duplicate IDs must return existing work and reject changed input or
+budget. The read adapter returns public results and accounting only, without
+starting, settling or retrying work. `createBackgroundWorkResult` projects the
+same progress, results and spend in text and structured content for broad host
+support. In uncertain states, retain the reservation and do not create a new ID
+to repeat work.
+
+Start is classified as `paid_access`; recovery is `entitlement_status`. Existing
+commerce host reviews and account/client restrictions still apply. These tools
+do not enable embedded checkout or override any host's commerce rules.
