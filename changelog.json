@@ -6,6 +6,16 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Add exact-version outbound review tools and rich durable job status with read-only recovery."
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.20.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Add shared reviewed business selection tools and an MCP App with explicit revision-bound confirmation."
 				}
 			],

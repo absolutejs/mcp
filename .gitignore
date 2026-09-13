@@ -7,3 +7,5 @@ src/billingApp.generated.ts
 src/workflowApp.generated.ts
 
 src/setupSelection.generated.ts
+
+src/actionWorkflow.generated.ts

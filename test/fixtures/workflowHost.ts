@@ -16,7 +16,7 @@ const bridge = new AppBridge(
 let calls = 0;
 const result = async (
   args: Record<string, unknown> = {},
-  name = "get_setup_options",
+  name = kind === "action" ? "get_action_review" : "get_setup_options",
 ) => {
   const response = await fetch(`/fixture?view=${kind}&tool=${name}`, {
     method: "POST",
@@ -34,9 +34,18 @@ bridge.oncalltool = async (params) => {
     receipts: "list_receipts",
   };
   if (
-    kind === "selection"
-      ? !["get_setup_options", "confirm_setup_selection"].includes(params.name)
-      : params.name !== names[kind]
+    kind === "action"
+      ? ![
+          "get_action_review",
+          "confirm_action_review",
+          "get_action_job",
+          "resume_action_job",
+        ].includes(params.name)
+      : kind === "selection"
+        ? !["get_setup_options", "confirm_setup_selection"].includes(
+            params.name,
+          )
+        : params.name !== names[kind]
   )
     throw Error("Unexpected tool");
   calls++;
@@ -51,3 +60,15 @@ await bridge.connect(
   new PostMessageTransport(frame.contentWindow!, frame.contentWindow!),
 );
 frame.src = `/view?kind=${kind}`;
+
+const toggle = document.createElement("button");
+toggle.textContent = "Toggle host theme";
+document.body.prepend(toggle);
+let dark = false;
+toggle.onclick = () => {
+  dark = !dark;
+  bridge.setHostContext({
+    theme: dark ? "dark" : "light",
+    displayMode: "inline",
+  });
+};

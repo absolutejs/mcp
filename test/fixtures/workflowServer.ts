@@ -1,3 +1,4 @@
+import { createActionWorkflowTools } from "../../src/actionWorkflow";
 import { createWorkflowApps } from "../../src/workflowApps";
 import { createWorkflowTools } from "../../src/workflowTools";
 import {
@@ -26,6 +27,39 @@ const selectionTools = createSetupSelectionTools({
       selectedId: request.selectedId,
     };
     return state;
+  },
+});
+const actionTools = createActionWorkflowTools({
+  review: async () => ({
+    actionId: "fixture",
+    revision: "v1",
+    title: "Synthetic outreach",
+    expiresAt: "2099-01-01T00:00:00Z",
+    recipients: ["nobody@example.test"],
+    subject: "Synthetic subject",
+    body: "<script>inert</script>\nFull reviewed message.",
+    consequence: "Synthetic fixture only; no email can be sent.",
+  }),
+  job: async () => ({
+    actionId: "fixture",
+    status: writes ? "queued" : "awaiting_approval",
+    title: "Synthetic outreach",
+    summary: "No real external effect",
+  }),
+  confirm: async (request) => {
+    if (
+      request.actionId !== "fixture" ||
+      request.expectedRevision !== "v1" ||
+      writes
+    )
+      throw Error("Stale");
+    writes++;
+    return {
+      actionId: "fixture",
+      status: "queued",
+      title: "Synthetic outreach",
+      summary: "No real external effect",
+    };
   },
 });
 const apps = createWorkflowApps();
@@ -79,14 +113,20 @@ Bun.serve({
       const preview = url.searchParams.get("view") === "preview";
       const args = await request.json();
       const tool =
-        url.searchParams.get("view") === "selection"
-          ? selectionTools[url.searchParams.get("tool") ?? "get_setup_options"]!
-          : tools[preview ? "preview_credit_work" : "get_setup_status"]!;
+        url.searchParams.get("view") === "action"
+          ? actionTools[url.searchParams.get("tool") ?? "get_action_review"]!
+          : url.searchParams.get("view") === "selection"
+            ? selectionTools[
+                url.searchParams.get("tool") ?? "get_setup_options"
+              ]!
+            : tools[preview ? "preview_credit_work" : "get_setup_status"]!;
       return Response.json(
         await tool.handler(
-          preview && !Object.keys(args).length
-            ? { operation: "read_business", maxCredits: 1 }
-            : args,
+          url.searchParams.get("view") === "action" && !Object.keys(args).length
+            ? { actionId: "fixture" }
+            : preview && !Object.keys(args).length
+              ? { operation: "read_business", maxCredits: 1 }
+              : args,
           { caller: {}, request, meta: {} },
         ),
       );

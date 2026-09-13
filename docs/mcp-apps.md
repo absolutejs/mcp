@@ -101,3 +101,29 @@ obtain explicit approval before invoking the write tool. This is a reversible
 setup action with no billing or outbound effects; it does not authorize paid
 work. At most 200 options are supported; IDs/revisions are bounded at 128
 characters and labels at 512. No account selector or credentials enter the view.
+
+### Durable action status and reviewed outbound approval
+
+`createActionWorkflowTools({ review, job, confirm? })` provides
+`get_action_review`, `get_action_job`, `resume_action_job`, and (only with a
+confirmation adapter) `confirm_action_review`. `createWorkflowApps()` supplies
+the shared action view. The review contains the full recipients, subject, body,
+consequences, exact revision, and expiry. The view separates local review/cancel
+from explicit **Approve and queue**, marks that tool as an external destructive
+write, and never calls tools on mount. Host theme changes are applied explicitly.
+
+Bind identity in the adapter. Under a database lock, compare the reviewed
+revision and expiry, authorize the immutable payload, and commit the decision
+and durable outbox together. All draft writers must refuse edits after claim.
+Use a stable effect identity and retain ambiguous outcomes for reconciliation;
+never make provider calls inside this confirmation tool. Returned job identity
+must match the requested action. Error responses require a saved-status read,
+not an automatic approval retry or a newly invented action ID.
+
+`resume_action_job` resumes **tracking**, by reading the existing durable job.
+It does not restart work, grant a new lease, retry, resend, or reconcile an
+unknown outcome. The worker owns safe retries. Project only user-facing status
+and summaries; do not expose raw provider errors, credentials or queue internals.
+The text-only path carries the same review and status; host support does not
+expand authorization or commerce eligibility. Review bodies are bounded at
+100,000 characters, subjects at 2,000, and recipient lists at 100.
