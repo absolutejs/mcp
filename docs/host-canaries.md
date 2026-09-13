@@ -172,3 +172,28 @@ aggregate evidence. The separate rich-view startup issue is unchanged.
 The [individual Copilot external-checkout review](reviews/vscode-individual-external-checkout.md)
 records the exact eligible deployment scope and activation conditions; the
 synthetic fixture is not a real merchant/OAuth acceptance test.
+
+### September 12 Claude workflow and selection observation
+
+Native Windows Chrome/Claude rendered MCP 0.18.0 setup and preview views from a
+verified onSpark staging connector. One explicit refresh per view produced one
+additional read each; conversation reload remounted both without extra calls.
+MCP 0.19.0's business selector subsequently rendered after one successful
+`get_setup_options` call. Reload left its audit at one read and no mutations.
+These were desktop/light-theme checks on an existing account. Local visible
+bridge fixtures separately covered 390px/light/dark layout and synthetic
+Review/Cancel (zero calls), Confirm (one call/one fixture write), and no replay.
+Native confirmation against a real business was not tested.
+
+After a server release, Claude retained its previous tool list. The connector's
+**More options → Refresh tools list** exposed the new tools without reconnecting.
+Chat discovery still chose the separate production connector until production
+was temporarily disabled in that test chat's **Connectors** submenu. Then the
+explicit staging-only read resolved and rendered. Restore prior toggles after a
+test. The stopped discovery attempts made no server calls. This is qualified
+operational evidence, not a proven general indexing defect: verify the native
+tool list and enabled connector scope before concluding that a deployed tool is
+missing, and do not stack authorization requests to troubleshoot discovery.
+
+Rendering evidence does not expand host commerce eligibility or authorize paid
+work, checkout, outbound actions, or real account mutations.
