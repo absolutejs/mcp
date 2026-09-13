@@ -72,3 +72,11 @@ toggle.onclick = () => {
     displayMode: "inline",
   });
 };
+
+const readOnly = document.createElement("button");
+readOnly.textContent = "Show read-only review";
+document.body.prepend(readOnly);
+readOnly.onclick = async () => {
+  const snapshot = await result();
+  await bridge.sendToolResult({ ...snapshot, structuredContent: { ...snapshot.structuredContent, canConfirm: false } });
+};

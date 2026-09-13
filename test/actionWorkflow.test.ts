@@ -105,3 +105,19 @@ test("adapters cannot substitute another action identity", async () => {
     tools.resume_action_job!.handler({ actionId: "one" }, ctx),
   ).rejects.toThrow("identity");
 });
+
+test("read-only adapters cannot advertise approval even if their review asks for it", async () => {
+  const tools = createActionWorkflowTools({
+    review: async () => ({ ...review, canConfirm: true }),
+    job: async () => ({
+      actionId: "one",
+      status: "unknown",
+      title: "Email",
+      summary: "Reconcile",
+    }),
+  });
+  expect(
+    await tools.get_action_review!.handler({ actionId: "one" }, ctx),
+  ).toMatchObject({ structuredContent: { canConfirm: false } });
+  expect(tools.confirm_action_review).toBeUndefined();
+});

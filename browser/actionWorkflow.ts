@@ -46,7 +46,7 @@ let review: ActionReview | null = null,
   busy = false;
 const controls = () => {
   refresh.disabled = !ready || !actionId || busy;
-  reviewButton.hidden = !review;
+  reviewButton.hidden = !review?.canConfirm;
   reviewButton.disabled = !ready || busy;
   confirm.hidden = !pending;
   cancel.hidden = !pending;
@@ -129,7 +129,7 @@ refresh.onclick = () => {
     });
 };
 reviewButton.onclick = () => {
-  if (!review || busy) return;
+  if (!review?.canConfirm || busy) return;
   if (Date.parse(review.expiresAt) <= Date.now()) {
     status.textContent = "This review expired. Refresh before proceeding.";
     clear();
@@ -142,7 +142,7 @@ reviewButton.onclick = () => {
 };
 cancel.onclick = clear;
 confirm.onclick = () => {
-  if (!pending || !review || busy) return;
+  if (!pending || !review?.canConfirm || busy) return;
   if (Date.parse(review.expiresAt) <= Date.now()) {
     clear();
     status.textContent = "Approval expired. Refresh the review.";

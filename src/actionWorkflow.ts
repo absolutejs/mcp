@@ -1,6 +1,8 @@
 import { isRecord } from "./guards";
 import type { McpToolRegistry, McpToolResult } from "./types";
 export type ActionReview = {
+  /** Set by the tool factory from the available confirmation capability. */
+  canConfirm?: boolean;
   actionId: string;
   revision: string;
   title: string;
@@ -42,6 +44,7 @@ export const projectActionReview = (value: unknown): ActionReview => {
   if (!Number.isFinite(Date.parse(expiresAt)))
     throw Error("Invalid review expiry");
   return {
+    canConfirm: value.canConfirm === true,
     actionId: text(value.actionId, 128),
     revision: text(value.revision, 128),
     title: text(value.title, 512),
@@ -117,7 +120,10 @@ export const createActionWorkflowTools = (adapter: {
         "Read the exact recipients, subject, message, consequences, revision and expiry of one owned pending action. No approval or send. Show the complete review before asking for approval.",
       handler: async (args) => {
         const actionId = idArgs(args),
-          data = projectActionReview(await adapter.review(actionId));
+          data = projectActionReview({
+            ...(await adapter.review(actionId)),
+            canConfirm: Boolean(adapter.confirm),
+          });
         if (data.actionId !== actionId) throw Error("Review identity mismatch");
         return result(data);
       },
