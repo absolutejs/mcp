@@ -1,234 +1,250 @@
 {
-	"contract": 1,
-	"name": "@absolutejs/mcp",
-	"releases": [
-		{
-			"changes": [
-				{
-					"kind": "fixed",
-					"summary": "Hide approval controls when an action review has no confirmation capability.",
-					"symbols": [
-						"ActionReview"
-					]
-				}
-			],
-			"date": "2026-09-13",
-			"version": "0.20.1"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add exact-version outbound review tools and rich durable job status with read-only recovery."
-				}
-			],
-			"date": "2026-09-13",
-			"version": "0.20.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add shared reviewed business selection tools and an MCP App with explicit revision-bound confirmation."
-				}
-			],
-			"date": "2026-09-13",
-			"version": "0.19.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add read-only setup and budget-preview tools with shared Apps and text fallbacks"
-				}
-			],
-			"date": "2026-09-13",
-			"version": "0.18.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Document scoped individual Copilot paid-work eligibility and deployment budget requirements"
-				}
-			],
-			"date": "2026-09-12",
-			"version": "0.17.9"
-		},
-		{
-			"changes": [
-				{
-					"kind": "fixed",
-					"summary": "Correct the VS Code checkout canary after verifying native Windows link consent and document the individual Copilot channel review"
-				}
-			],
-			"date": "2026-09-12",
-			"version": "0.17.8"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Ship a synthetic external-checkout host canary with expiring links, explicit approval and purchase-status checks"
-				}
-			],
-			"date": "2026-09-12",
-			"version": "0.17.7"
-		},
-		{
-			"changes": [
-				{
-					"kind": "fixed",
-					"summary": "Use text and structured report results on affected VS Code builds while their upstream webview startup race remains unresolved"
-				},
-				{
-					"kind": "added",
-					"summary": "Allow verified patched hosts through the version fallback with optional Apps configuration",
-					"symbols": [
-						"clientSupportsMcpApps",
-						"McpAppsConfig"
-					]
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.6"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Distribute a verified VS Code webview startup-race source patch and actual-method regression checker, with explicit upstream delivery requirements"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.5"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Ship an authenticated two-account staging canary for read isolation, credential rejection and session reconnect with private credentials and aggregate-only results"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.4"
-		},
-		{
-			"changes": [
-				{
-					"kind": "fixed",
-					"summary": "Authorize session deletion, recover explicit client initialization after expiry, and preserve typed HTTP failures without replaying tools"
-				},
-				{
-					"kind": "fixed",
-					"summary": "Accept the standard protocol-header compatibility fallback used by VS Code Copilot and record native report rendering evidence"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.3"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Record verified Claude web rendering, refresh, pagination and narrow-viewport host canary evidence"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.2"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Ship a preflight-validated synthetic host canary and record Claude Code and Codex terminal interoperability evidence"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.1"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Negotiate MCP Apps with persisted capabilities, guarded offline UI resources and reusable SDK-backed billing views"
-				},
-				{
-					"kind": "added",
-					"summary": "Preserve remote UI metadata in the client and expose immutable PostgreSQL migration entries"
-				},
-				{
-					"kind": "changed",
-					"summary": "Extend McpClientOptions, McpRemoteTool, createSessionRegistry, McpSessionStore, McpServerConfig, McpTool and McpToolResult with optional Apps capability and metadata fields; existing text-only callers remain supported",
-					"symbols": [
-						"McpClientOptions",
-						"McpRemoteTool",
-						"createSessionRegistry",
-						"McpSessionStore",
-						"McpServerConfig",
-						"McpTool",
-						"McpToolResult"
-					]
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.17.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add account-bound billing status, paginated receipts, bounded usage and reviewed billing-management links"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.16.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "fixed",
-					"summary": "Build and test before publishing so checkout exports are present in the distributed artifact"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.15.1"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add commerce-classified account-bound checkout handoff and purchase status tools"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.15.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add explicit credit-budget envelopes for durable prepaid MCP work"
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.14.0"
-		},
-		{
-			"changes": [
-				{
-					"kind": "added",
-					"summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
-					"symbols": [
-						"McpServerConfig",
-						"McpTool",
-						"evaluateCommerce",
-						"createCreditBalanceTool"
-					]
-				}
-			],
-			"date": "2026-09-11",
-			"version": "0.13.0"
-		}
-	]
+  "contract": 1,
+  "name": "@absolutejs/mcp",
+  "releases": [
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Bind explicit prepaid budgets to action review and confirmation and display durable credit usage",
+          "symbols": [
+            "ActionReview",
+            "ActionConfirmation",
+            "ActionJob",
+            "createActionWorkflowTools"
+          ]
+        }
+      ],
+      "date": "2026-09-13",
+      "version": "0.21.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Hide approval controls when an action review has no confirmation capability.",
+          "symbols": [
+            "ActionReview"
+          ]
+        }
+      ],
+      "date": "2026-09-13",
+      "version": "0.20.1"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add exact-version outbound review tools and rich durable job status with read-only recovery."
+        }
+      ],
+      "date": "2026-09-13",
+      "version": "0.20.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add shared reviewed business selection tools and an MCP App with explicit revision-bound confirmation."
+        }
+      ],
+      "date": "2026-09-13",
+      "version": "0.19.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add read-only setup and budget-preview tools with shared Apps and text fallbacks"
+        }
+      ],
+      "date": "2026-09-13",
+      "version": "0.18.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Document scoped individual Copilot paid-work eligibility and deployment budget requirements"
+        }
+      ],
+      "date": "2026-09-12",
+      "version": "0.17.9"
+    },
+    {
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Correct the VS Code checkout canary after verifying native Windows link consent and document the individual Copilot channel review"
+        }
+      ],
+      "date": "2026-09-12",
+      "version": "0.17.8"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Ship a synthetic external-checkout host canary with expiring links, explicit approval and purchase-status checks"
+        }
+      ],
+      "date": "2026-09-12",
+      "version": "0.17.7"
+    },
+    {
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Use text and structured report results on affected VS Code builds while their upstream webview startup race remains unresolved"
+        },
+        {
+          "kind": "added",
+          "summary": "Allow verified patched hosts through the version fallback with optional Apps configuration",
+          "symbols": [
+            "clientSupportsMcpApps",
+            "McpAppsConfig"
+          ]
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.6"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Distribute a verified VS Code webview startup-race source patch and actual-method regression checker, with explicit upstream delivery requirements"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.5"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Ship an authenticated two-account staging canary for read isolation, credential rejection and session reconnect with private credentials and aggregate-only results"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.4"
+    },
+    {
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Authorize session deletion, recover explicit client initialization after expiry, and preserve typed HTTP failures without replaying tools"
+        },
+        {
+          "kind": "fixed",
+          "summary": "Accept the standard protocol-header compatibility fallback used by VS Code Copilot and record native report rendering evidence"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.3"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Record verified Claude web rendering, refresh, pagination and narrow-viewport host canary evidence"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.2"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Ship a preflight-validated synthetic host canary and record Claude Code and Codex terminal interoperability evidence"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.1"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Negotiate MCP Apps with persisted capabilities, guarded offline UI resources and reusable SDK-backed billing views"
+        },
+        {
+          "kind": "added",
+          "summary": "Preserve remote UI metadata in the client and expose immutable PostgreSQL migration entries"
+        },
+        {
+          "kind": "changed",
+          "summary": "Extend McpClientOptions, McpRemoteTool, createSessionRegistry, McpSessionStore, McpServerConfig, McpTool and McpToolResult with optional Apps capability and metadata fields; existing text-only callers remain supported",
+          "symbols": [
+            "McpClientOptions",
+            "McpRemoteTool",
+            "createSessionRegistry",
+            "McpSessionStore",
+            "McpServerConfig",
+            "McpTool",
+            "McpToolResult"
+          ]
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.17.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add account-bound billing status, paginated receipts, bounded usage and reviewed billing-management links"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.16.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "fixed",
+          "summary": "Build and test before publishing so checkout exports are present in the distributed artifact"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.15.1"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add commerce-classified account-bound checkout handoff and purchase status tools"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.15.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add explicit credit-budget envelopes for durable prepaid MCP work"
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.14.0"
+    },
+    {
+      "changes": [
+        {
+          "kind": "added",
+          "summary": "Add reviewed host commerce eligibility, execution guards, and reusable credit status tools",
+          "symbols": [
+            "McpServerConfig",
+            "McpTool",
+            "evaluateCommerce",
+            "createCreditBalanceTool"
+          ]
+        }
+      ],
+      "date": "2026-09-11",
+      "version": "0.13.0"
+    }
+  ]
 }

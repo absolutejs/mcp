@@ -121,3 +121,66 @@ test("read-only adapters cannot advertise approval even if their review asks for
   ).toMatchObject({ structuredContent: { canConfirm: false } });
   expect(tools.confirm_action_review).toBeUndefined();
 });
+
+test("prepaid approval preserves the explicit reviewed budget and paid-access policy", async () => {
+  let writes = 0;
+  let confirmed: unknown;
+  const tools = createActionWorkflowTools({
+    requiresBudget: true,
+    review: async (_id, maxCredits) => ({
+      ...review,
+      ...(maxCredits !== undefined ? { maxCredits } : {}),
+    }),
+    job: async () => ({
+      actionId: "one",
+      status: "queued",
+      title: "Email",
+      summary: "Held",
+    }),
+    confirm: async (args) => {
+      writes++;
+      confirmed = args;
+      return {
+        actionId: "one",
+        status: "queued",
+        title: "Email",
+        summary: "Held",
+        creditUsage: {
+          workId: "action:one",
+          maxCredits: args.maxCredits!,
+          creditsCharged: 0,
+          status: "reserved",
+        },
+      };
+    },
+  });
+  expect(
+    await tools.get_action_review!.handler({ actionId: "one" }, ctx),
+  ).toMatchObject({ structuredContent: { canConfirm: false } });
+  expect(
+    await tools.get_action_review!.handler(
+      { actionId: "one", maxCredits: 20 },
+      ctx,
+    ),
+  ).toMatchObject({ structuredContent: { canConfirm: true, maxCredits: 20 } });
+  expect(writes).toBe(0);
+  expect(tools.confirm_action_review!.commerce).toEqual({
+    action: "paid_access",
+    categories: ["usage_credits"],
+  });
+  for (const maxCredits of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "20"]) {
+    await expect(
+      tools.get_action_review!.handler({ actionId: "one", maxCredits }, ctx),
+    ).rejects.toThrow();
+  }
+  await tools.confirm_action_review!.handler(
+    { actionId: "one", expectedRevision: "version-one", maxCredits: 20 },
+    ctx,
+  );
+  expect(confirmed).toEqual({
+    actionId: "one",
+    expectedRevision: "version-one",
+    maxCredits: 20,
+  });
+  expect(writes).toBe(1);
+});

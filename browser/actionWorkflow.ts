@@ -83,6 +83,13 @@ const render = (result: unknown) => {
         el("p", review.consequence),
         el("p", `Approval expires: ${review.expiresAt}`),
       );
+      if (review.maxCredits !== undefined)
+        output.append(
+          el(
+            "p",
+            `Reserve up to ${review.maxCredits} service credits for this action. The final charge cannot exceed this limit. Unused credits return after a definite result; uncertain outcomes keep the reservation held.`,
+          ),
+        );
       status.textContent =
         "Read the full message and consequences before approving.";
     } else {
@@ -94,6 +101,13 @@ const render = (result: unknown) => {
         el("p", `Status: ${job.status}`),
         el("p", job.summary),
       );
+      if (job.creditUsage)
+        output.append(
+          el(
+            "p",
+            `Credits: ${job.creditUsage.creditsCharged} used of ${job.creditUsage.maxCredits} maximum; ${job.creditUsage.status}. Work ID: ${job.creditUsage.workId}`,
+          ),
+        );
       status.textContent =
         "Saved job status. Refresh reads only; it never restarts work.";
     }
@@ -126,6 +140,9 @@ refresh.onclick = () => {
   if (actionId)
     void call(view === "review" ? "get_action_review" : "get_action_job", {
       actionId,
+      ...(view === "review" && review?.maxCredits !== undefined
+        ? { maxCredits: review.maxCredits }
+        : {}),
     });
 };
 reviewButton.onclick = () => {
@@ -148,7 +165,13 @@ confirm.onclick = () => {
     status.textContent = "Approval expired. Refresh the review.";
     return;
   }
-  const args = { actionId: review.actionId, expectedRevision: review.revision };
+  const args = {
+    actionId: review.actionId,
+    expectedRevision: review.revision,
+    ...(review.maxCredits !== undefined
+      ? { maxCredits: review.maxCredits }
+      : {}),
+  };
   view = "job";
   void call("confirm_action_review", args);
 };

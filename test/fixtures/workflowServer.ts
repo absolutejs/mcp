@@ -30,7 +30,9 @@ const selectionTools = createSetupSelectionTools({
   },
 });
 const actionTools = createActionWorkflowTools({
-  review: async () => ({
+  requiresBudget: true,
+  review: async (_id, maxCredits) => ({
+    maxCredits,
     actionId: "fixture",
     revision: "v1",
     title: "Synthetic outreach",
@@ -41,6 +43,12 @@ const actionTools = createActionWorkflowTools({
     consequence: "Synthetic fixture only; no email can be sent.",
   }),
   job: async () => ({
+    creditUsage: {
+      workId: "action:fixture",
+      maxCredits: 40,
+      creditsCharged: 0,
+      status: "reserved",
+    },
     actionId: "fixture",
     status: writes ? "queued" : "awaiting_approval",
     title: "Synthetic outreach",
@@ -50,11 +58,18 @@ const actionTools = createActionWorkflowTools({
     if (
       request.actionId !== "fixture" ||
       request.expectedRevision !== "v1" ||
+      request.maxCredits !== 40 ||
       writes
     )
       throw Error("Stale");
     writes++;
     return {
+      creditUsage: {
+        workId: "action:fixture",
+        maxCredits: 40,
+        creditsCharged: 0,
+        status: "reserved",
+      },
       actionId: "fixture",
       status: "queued",
       title: "Synthetic outreach",
@@ -123,7 +138,7 @@ Bun.serve({
       return Response.json(
         await tool.handler(
           url.searchParams.get("view") === "action" && !Object.keys(args).length
-            ? { actionId: "fixture" }
+            ? { actionId: "fixture", maxCredits: 40 }
             : preview && !Object.keys(args).length
               ? { operation: "read_business", maxCredits: 1 }
               : args,

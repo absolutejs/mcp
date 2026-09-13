@@ -127,3 +127,18 @@ and summaries; do not expose raw provider errors, credentials or queue internals
 The text-only path carries the same review and status; host support does not
 expand authorization or commerce eligibility. Review bodies are bounded at
 100,000 characters, subjects at 2,000, and recipient lists at 100.
+
+### Deferred prepaid action budgets
+
+Action review accepts optional `maxCredits`; confirmation echoes that exact value.
+A `requiresBudget` adapter exposes approval only for a review containing an explicit
+positive safe-integer budget and marks confirmation as `paid_access` for
+`usage_credits`. Existing server-bound host commerce policy still applies.
+The consumer must bind the budget into its revision, atomically reserve with the
+outbox, and transfer metering to its durable worker. Never interpret a review read
+as spending permission. Missing or changed budgets must fail confirmation.
+
+The shared App displays the hold, charge ceiling and uncertain-outcome behavior
+before approval, then carries the budget unchanged to confirmation. Job results
+may show projected `creditUsage` (work ID, maximum, charged amount and reserved or
+settled state). Read/resume/refresh never reserve, settle or retry execution.
