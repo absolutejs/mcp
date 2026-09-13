@@ -368,3 +368,18 @@ bounded work until their reservation and recovery lifecycle is implemented.
 This documentation update changes no runtime API, profile, feature flag or
 published package version. It is available in the shared repository and will
 ship with the next package release through the existing documentation allowlist.
+
+### Background research estimates
+
+`createBackgroundWorkTools({ estimate, start, read, ... })` optionally exposes
+`estimate_background_work`. Its adapter returns minimum credits for one step,
+estimated total credits, total steps and explicit assumptions. Public output is
+identical in text and structured hosts, and omits adapter-private fields. No
+provider work or reservation belongs in the estimate adapter.
+
+Estimates use `paid_access` commerce policy, so a restricted host cannot use this
+as a pricing/purchase workaround. Obtain user agreement to the exact plan and
+maximum before start. Server-side start must reevaluate admission atomically;
+never silently raise a maximum. Saved-work reads remain separate and credit-free.
+An estimate is advisory, not an expiring quote or guaranteed cost. Bind input,
+account and maximum durably; exact-ID recovery must not depend on current pricing.

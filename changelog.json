@@ -6,6 +6,20 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Add estimate-based background work admission while preserving exact-ID recovery and hard charge caps.",
+					"symbols": [
+						"McpBackgroundWorkEstimate",
+						"createBackgroundWorkTools"
+					]
+				}
+			],
+			"date": "2026-09-13",
+			"version": "0.25.0"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Add durable background work launch and read-only recovery tools with matching text and structured progress."
 				}
 			],

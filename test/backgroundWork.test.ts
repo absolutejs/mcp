@@ -24,3 +24,21 @@ test("read-only recovery never calls start and can be offered without a start ad
   const missing = await recovery.get_background_work!.handler({ requestId: "job" }, context);
   expect(missing).toMatchObject({ isError: true });
 });
+
+test("estimates project only public fields and cannot start work", async () => {
+  let starts = 0;
+  const tools = createBackgroundWorkTools({ description: "Research", inputSchema: {}, read: async () => null,
+    start: async () => { starts++; return snapshot; },
+    estimate: async () => ({ minimumCredits: 20, estimatedCredits: 60, totalSteps: 3, assumptions: "One search per question", privateAccount: "secret" }),
+  });
+  const context = {} as Parameters<NonNullable<typeof tools.estimate_background_work>["handler"]>[1];
+  const result = await tools.estimate_background_work!.handler({}, context);
+  expect(starts).toBe(0);
+  expect(tools.estimate_background_work!.commerce?.action).toBe("paid_access");
+  expect(result).toMatchObject({ structuredContent: { minimumCredits: 20, estimatedCredits: 60 } });
+  expect(JSON.stringify(result)).not.toContain("secret");
+  const invalid = createBackgroundWorkTools({ description: "Research", inputSchema: {}, read: async () => null,
+    estimate: async () => ({ minimumCredits: 20, estimatedCredits: 1, totalSteps: 3, assumptions: "test" }),
+  });
+  await expect(invalid.estimate_background_work!.handler({}, context)).rejects.toThrow("Invalid background work estimate");
+});

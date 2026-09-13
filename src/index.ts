@@ -173,3 +173,5 @@ export {
 } from "./creditWorkResult";
 
 export { createBackgroundWorkTools, createBackgroundWorkResult, type McpBackgroundWorkSnapshot } from "./backgroundWork";
+
+export type { McpBackgroundWorkEstimate } from "./backgroundWork";
