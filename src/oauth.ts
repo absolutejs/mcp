@@ -67,6 +67,8 @@ export type McpOAuthInteractiveRequest = {
 
 export type McpOAuthOptions = {
   clientId: string;
+  /** Confidential clients only; never sent to authorization URLs or resource servers. */
+  clientSecret?: string;
   redirectUri: string;
   store: McpOAuthTokenStore;
   fetch: (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -341,6 +343,7 @@ export const createMcpOAuthProvider = (
       client_id: options.clientId,
       resource: found.resource.resource,
     });
+    if (options.clientSecret) params.set("client_secret", options.clientSecret);
     if (tokens.scopes.length) params.set("scope", tokens.scopes.join(" "));
     const proof = await options.createDpopProof?.({
       method: "POST",
@@ -413,6 +416,8 @@ export const createMcpOAuthProvider = (
         code_verifier: request.codeVerifier,
         resource: found.resource.resource,
       });
+      if (options.clientSecret)
+        params.set("client_secret", options.clientSecret);
       const proof = await options.createDpopProof?.({
         method: "POST",
         url: found.authorizationServer.token_endpoint,

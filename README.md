@@ -481,3 +481,15 @@ to repeat work.
 Start is classified as `paid_access`; recovery is `entitlement_status`. Existing
 commerce host reviews and account/client restrictions still apply. These tools
 do not enable embedded checkout or override any host's commerce rules.
+
+### Tool audit records
+
+`onCall` receives normalized `result`, `outcome` (`completed`, `failed`, or
+`rejected`), `durationMs`, JSON-RPC `requestId`, unique `traceId`, and `sessionId`,
+alongside the existing caller, arguments, name, success flag, and shared metadata.
+The trace ID is available in `meta.traceId` before admission. Rejected guards,
+unknown tools, malformed calls, and dispatch failures are recorded too. Streaming
+and deferred task calls produce one final record when their execution finishes.
+An audit-hook exception is logged without replacing the executed tool result.
+Hosts must redact credentials and choose payload size and retention limits before
+persisting records. These records do not include the client's surrounding chat.

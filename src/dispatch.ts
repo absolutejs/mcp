@@ -306,6 +306,49 @@ const SSE_HEADERS: Record<string, string> = {
 
 const sseFrame = (message: unknown) => `data: ${JSON.stringify(message)}\n\n`;
 
+type AuditedCallMeta = McpCallMeta & {
+  traceId: string;
+  startedAt: number;
+  sessionId: string | null;
+  auditRecorded?: boolean;
+  auditDeferred?: boolean;
+};
+
+/** Audit failures must never replace a tool result or cause a write to retry. */
+const emitToolAudit = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  id: JsonRpcId,
+  name: string,
+  args: unknown,
+  meta: AuditedCallMeta,
+  payload: unknown,
+  outcome: "completed" | "failed" | "rejected",
+) => {
+  meta.auditRecorded = true;
+  if (!config.onCall) return;
+  try {
+    await config.onCall({
+      args,
+      caller,
+      meta,
+      name,
+      ok: outcome === "completed",
+      result: isRecord(payload) ? (payload.result ?? payload.error) : payload,
+      outcome,
+      requestId: id,
+      traceId: meta.traceId,
+      sessionId: meta.sessionId,
+      durationMs: Math.max(0, Date.now() - meta.startedAt),
+    });
+  } catch {
+    console.error("[mcp] audit persistence failed", {
+      traceId: meta.traceId,
+      name,
+    });
+  }
+};
+
 /** Run the handler and produce the tools/call Response. */
 const runTool = async <Caller>(
   config: McpServerConfig<Caller>,
@@ -314,7 +357,7 @@ const runTool = async <Caller>(
   id: JsonRpcId,
   name: string,
   args: unknown,
-  meta: McpCallMeta,
+  meta: AuditedCallMeta,
   tool: McpTool,
   context: McpToolCallContext,
 ) => {
@@ -444,7 +487,16 @@ const runTool = async <Caller>(
       },
     };
   }
-  if (config.onCall) await config.onCall({ args, caller, meta, name, ok });
+  await emitToolAudit(
+    config,
+    caller,
+    id,
+    name,
+    args,
+    meta,
+    payload,
+    ok ? "completed" : "failed",
+  );
 
   return payload;
 };
@@ -460,7 +512,7 @@ const toolsCallStreaming = <Caller>(
   id: JsonRpcId,
   name: string,
   args: unknown,
-  meta: McpCallMeta,
+  meta: AuditedCallMeta,
   tool: McpTool,
   sessions: SessionRegistry,
   canElicit: boolean,
@@ -548,12 +600,61 @@ const toolsCall = async <Caller>(
   params: unknown,
   context: McpDispatchContext,
 ) => {
+  const meta: AuditedCallMeta = {
+    traceId: crypto.randomUUID(),
+    startedAt: Date.now(),
+    sessionId: context.sessionId ?? null,
+  };
+  let response: Response;
+  try {
+    response = await toolsCallInner(
+      config,
+      caller,
+      scopes,
+      id,
+      params,
+      context,
+      meta,
+    );
+  } catch (error) {
+    response = rpcError(
+      id,
+      JSONRPC_INTERNAL_ERROR,
+      error instanceof Error ? error.message : "Tool dispatch failed",
+    );
+  }
+  if (!meta.auditRecorded && !meta.auditDeferred) {
+    const payload: unknown = await response.clone().json();
+    await emitToolAudit(
+      config,
+      caller,
+      id,
+      isRecord(params) && typeof params.name === "string"
+        ? params.name
+        : "(invalid)",
+      isRecord(params) ? (params.arguments ?? {}) : {},
+      meta,
+      payload,
+      "rejected",
+    );
+  }
+  return response;
+};
+
+const toolsCallInner = async <Caller>(
+  config: McpServerConfig<Caller>,
+  caller: Caller,
+  scopes: string[],
+  id: JsonRpcId,
+  params: unknown,
+  context: McpDispatchContext,
+  meta: AuditedCallMeta,
+) => {
   if (!isRecord(params) || typeof params.name !== "string") {
     return rpcError(id, JSONRPC_INVALID_PARAMS, "tools/call needs a name");
   }
   const name = params.name;
   const args = params.arguments ?? {};
-  const meta: McpCallMeta = {};
   if (config.beforeCall) {
     const gate = await config.beforeCall({ args, caller, meta, name });
     if (gate) return errorResult(id, gate.block);
@@ -627,6 +728,7 @@ const toolsCall = async <Caller>(
       ttlMs: tasks.ttlMs ?? requestedTtl ?? null,
     };
     await tasks.store.save(task);
+    meta.auditDeferred = true;
     setTimeout(() => {
       void runTool(config, caller, scopes, id, name, args, meta, tool, noElicit)
         .then(async (payload) => {
@@ -668,6 +770,7 @@ const toolsCall = async <Caller>(
     sessions &&
     session
   ) {
+    meta.auditDeferred = true;
     return toolsCallStreaming(
       config,
       caller,

@@ -5,6 +5,28 @@
 		{
 			"changes": [
 				{
+					"kind": "added",
+					"summary": "Support optional confidential OAuth client authentication during code and refresh exchange without exposing secrets to authorization URLs or resource requests.",
+					"symbols": [
+						"McpOAuthOptions",
+						"createMcpOAuthProvider"
+					]
+				},
+				{
+					"kind": "fixed",
+					"summary": "Capture tool results, timing and correlation in onCall, including rejected calls and exactly-once streaming/task completion; audit persistence errors no longer replace executed results.",
+					"symbols": [
+						"McpServerConfig",
+						"dispatchMcp"
+					]
+				}
+			],
+			"date": "2026-09-18",
+			"version": "0.26.3"
+		},
+		{
+			"changes": [
+				{
 					"kind": "fixed",
 					"summary": "Recognize the exact VS Code Insiders OAuth redirect alongside stable VS Code; retain unknown-host rejection.",
 					"symbols": [

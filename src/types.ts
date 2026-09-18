@@ -104,9 +104,7 @@ export type McpSessionStore = {
     canRenderUi?: boolean;
   }) => Promise<string> | string;
   drop: (id: string) => Promise<void> | void;
-  get: (
-    id: string,
-  ) =>
+  get: (id: string) =>
     | Promise<{
         canElicit: boolean;
         canElicitUrl?: boolean;
@@ -354,8 +352,17 @@ export type McpServerConfig<Caller> = {
   /** Page size for tools/prompts/resources list pagination (default 50). */
   listPageSize?: number;
   /** Fired after every `tools/call` for auditing. `meta` carries anything the
-   *  tool handler wrote during the call. */
+   *  tool handler wrote during the call. Includes pre-execution rejections;
+   *  streamed/deferred calls report once when execution finishes. Hook failures
+   *  are logged without replacing an executed result. */
   onCall?: (record: {
+    /** Normalized tool result or JSON-RPC error. Hosts own redaction and retention. */
+    result: unknown;
+    outcome: "completed" | "failed" | "rejected";
+    durationMs: number;
+    requestId: string | number | null;
+    traceId: string;
+    sessionId: string | null;
     args: unknown;
     caller: Caller;
     meta: McpCallMeta;

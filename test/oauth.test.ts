@@ -68,6 +68,9 @@ describe("MCP OAuth client", () => {
       if (url.includes("oauth-authorization-server"))
         return new Response(JSON.stringify(serverMetadata));
       if (url.endsWith("/oauth2/token")) {
+        expect(
+          new URLSearchParams(String(init?.body)).get("client_secret"),
+        ).toBe("confidential-secret");
         expect(String(init?.body)).toContain(
           "resource=https%3A%2F%2Ftools.example%2Fmcp",
         );
@@ -81,13 +84,17 @@ describe("MCP OAuth client", () => {
       return new Response("missing", { status: 404 });
     };
     const provider = createMcpOAuthProvider({
+      clientSecret: "confidential-secret",
       endpoint,
       clientId: "https://client.example/oauth.json",
       redirectUri: "https://client.example/callback",
       store,
       fetch: fetcher,
       scopes: ["tools.read"],
-      onAuthorize: async ({ state }) => ({ code: "code", state }),
+      onAuthorize: async ({ state, authorizationUrl }) => {
+        expect(authorizationUrl).not.toContain("confidential-secret");
+        return { code: "code", state };
+      },
     });
     const retry = await provider.onUnauthorized?.({
       method: "POST",
@@ -105,4 +112,48 @@ describe("MCP OAuth client", () => {
       authorization: "Bearer access",
     });
   });
+});
+
+test("confidential refresh authenticates only the token exchange and retains refresh tokens", async () => {
+  const store = createMemoryMcpOAuthTokenStore();
+  await store.save({
+    resource: endpoint,
+    accessToken: "expired",
+    tokenType: "Bearer",
+    refreshToken: "refresh",
+    expiresAt: 1,
+    scopes: ["tools.read"],
+  });
+  let exchanges = 0;
+  const provider = createMcpOAuthProvider({
+    endpoint,
+    clientId: "confidential",
+    clientSecret: "private-secret",
+    redirectUri: "https://client.example/callback",
+    store,
+    now: () => 10000,
+    fetch: async (input, init) => {
+      const url = String(input);
+      if (url.includes("oauth-protected-resource"))
+        return Response.json(resourceMetadata);
+      if (url.includes("oauth-authorization-server"))
+        return Response.json(serverMetadata);
+      expect(url).toBe(serverMetadata.token_endpoint);
+      const params = new URLSearchParams(String(init?.body));
+      expect(params.get("grant_type")).toBe("refresh_token");
+      expect(params.get("client_secret")).toBe("private-secret");
+      expect(params.get("refresh_token")).toBe("refresh");
+      exchanges++;
+      return Response.json({
+        access_token: "renewed",
+        token_type: "Bearer",
+        expires_in: 300,
+      });
+    },
+  });
+  expect(await provider.headers({ method: "POST", url: endpoint })).toEqual({
+    authorization: "Bearer renewed",
+  });
+  expect(exchanges).toBe(1);
+  expect((await store.load(endpoint))?.refreshToken).toBe("refresh");
 });
