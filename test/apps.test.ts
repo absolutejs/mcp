@@ -114,6 +114,56 @@ test("text-only, missing and spoofed capabilities never advertise or read Apps",
     (await (await handler(rpc("tools/list")))!.json()).result.tools[0]._meta,
   ).toBeUndefined();
 });
+test("cached App URIs resolve only through an authorized current resource", async () => {
+  const settings = config();
+  const oldUri = "ui://test/report-v0.html";
+  settings.apps!.resourceAliases = { [oldUri]: uri };
+  const handler = createMcpHandler(settings);
+  const session = (await handler(
+    rpc("initialize", initialize([MCP_APP_MIME])),
+  ))!.headers.get("mcp-session-id")!;
+  const read = async (resourceUri = oldUri, sessionId = session) =>
+    (await handler(
+      rpc("resources/read", { uri: resourceUri }, sessionId),
+    ))!.json();
+  const listed = await (await handler(
+    rpc("resources/list", {}, session),
+  ))!.json();
+  expect(
+    listed.result.resources.map((item: { uri: string }) => item.uri),
+  ).toEqual([uri]);
+  const legacy = (await read()).result.contents[0];
+  expect(legacy.uri).toBe(oldUri);
+  expect(legacy.text).toContain("Offline report");
+  expect(legacy._meta.ui.csp.connectDomains).toEqual([]);
+  expect((await read("ui://test/unknown.html")).error).toBeDefined();
+  const textSession = (await handler(
+    rpc("initialize", initialize()),
+  ))!.headers.get("mcp-session-id")!;
+  expect((await read(oldUri, textSession)).error).toBeDefined();
+  expect(
+    (await handler(rpc("resources/read", { uri: oldUri }, session, "bad")))!
+      .status,
+  ).toBe(401);
+  const originalTools = settings.tools;
+  settings.tools = async (context) => {
+    const tools = await originalTools(context);
+    tools.report!.scope = "admin";
+    return tools;
+  };
+  expect((await read()).error).toBeDefined();
+  settings.tools = async (context) => {
+    const tools = await originalTools(context);
+    tools.report!.commerce = {
+      action: "external_checkout",
+      categories: ["usage_credits"],
+    };
+    return tools;
+  };
+  expect((await read()).error).toBeDefined();
+  settings.tools = () => ({});
+  expect((await read()).error).toBeDefined();
+});
 test("UI resource reads recheck scope and commerce after discovery", async () => {
   const settings = config();
   let blocked = false;

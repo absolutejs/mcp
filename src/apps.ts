@@ -6,6 +6,9 @@ export type McpAppsConfig = {
   /** Only enable for a host build whose upstream rendering fix has been verified. */
   allowKnownBrokenHosts?: boolean;
   resources: Record<string, McpAppResource>;
+  /** Legacy URI -> current resource URI. Read-only compatibility aliases inherit
+   * the current resource's tool authorization and are not advertised in lists. */
+  resourceAliases?: Record<string, string>;
   store?: McpSessionStore;
 };
 /** Capability is presentation only; never a commerce or authorization decision. */
@@ -89,4 +92,11 @@ export {
   type SetupOption,
 } from "./setupSelection";
 
-export { createActionWorkflowTools, projectActionReview, projectActionJob, type ActionReview, type ActionConfirmation, type ActionJob } from "./actionWorkflow";
+export {
+  createActionWorkflowTools,
+  projectActionReview,
+  projectActionJob,
+  type ActionReview,
+  type ActionConfirmation,
+  type ActionJob,
+} from "./actionWorkflow";

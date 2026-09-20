@@ -1112,9 +1112,10 @@ const resourcesRead = async <Caller>(
       scopes,
       canRenderUi,
     );
-    const resource = contents.find((resource) => resource.uri === uri);
+    const target = config.apps.resourceAliases?.[uri] ?? uri;
+    const resource = contents.find((resource) => resource.uri === target);
     return resource
-      ? rpcResult(id, { contents: [resource] })
+      ? rpcResult(id, { contents: [{ ...resource, uri }] })
       : rpcError(id, JSONRPC_INVALID_PARAMS, `Unknown resource: ${uri}`);
   }
   const resources = config.resources;

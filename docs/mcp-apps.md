@@ -37,6 +37,15 @@ The package client can opt in with `createMcpClient({ apps: true, ... })` and pr
 
 ## Shared sessions and migration
 
+Hosts may cache tool catalogs across new conversations. When changing an App URI,
+configure `apps.resourceAliases` as a map from each old URI to the current URI.
+An alias serves the current template with the requested old URI in the response,
+and inherits the current linked tool's scope, Agency and commerce checks on every
+read. Aliases are not listed, do not follow alias chains, and do not expose
+unlinked resources. Merely retaining old entries in `apps.resources` does not
+make them readable once no tool refers to them. Hosts still need to refresh their
+connector catalog to discover new tools, schemas and instructions.
+
 Apps introduces session state even when elicitation is off. Use a shared `McpSessionStore` for multiple instances. If elicitation also supplies a store, that store takes precedence over `apps.store` so both capabilities use one session identity. A custom store must preserve `canRenderUi`; omitting it fails closed to text-only presentation. Store capability flags, not authentication or payment permission, in these records.
 
 For package PostgreSQL stores, apply `mcpPostgresMigrations()` before running the updated store. The existing `mcp@0.10.1` SQL and digest remain unchanged. The new `mcp@0.17.0` entry adds `can_render_ui boolean NOT NULL DEFAULT false`. `mcpPostgresSchemaSql()` combines both for fresh or idempotent manual setup. Existing sessions default to false and clients must initialize again to negotiate Apps. Custom application tables require their own matching additive migration.

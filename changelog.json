@@ -5,6 +5,19 @@
 		{
 			"changes": [
 				{
+					"kind": "fixed",
+					"summary": "Support explicit legacy App resource URI aliases for cached host catalogs while retaining current tool authorization and capability checks.",
+					"symbols": [
+						"McpAppsConfig"
+					]
+				}
+			],
+			"date": "2026-09-20",
+			"version": "0.26.5"
+		},
+		{
+			"changes": [
+				{
 					"kind": "added",
 					"summary": "Resolve initialization instructions per authenticated caller using an optional asynchronous callback; static instruction strings remain supported.",
 					"symbols": [
