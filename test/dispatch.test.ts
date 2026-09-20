@@ -417,3 +417,33 @@ describe("verifyBearer", () => {
     expect(result).toEqual({ error: "Wrong audience" });
   });
 });
+
+test("instructions resolve independently for each authenticated caller", async () => {
+  const config = baseConfig({
+    instructions: async ({ caller }) =>
+      caller.id === "u1" ? "Restricted" : "Mixed",
+  });
+  const [one, two] = await Promise.all([
+    dispatchMcp(config, { id: "u1" }, [], rpc("initialize")),
+    dispatchMcp(config, { id: "u2" }, [], rpc("initialize")),
+  ]);
+  expect((await one.json()).result.instructions).toBe("Restricted");
+  expect((await two.json()).result.instructions).toBe("Mixed");
+  expect(
+    (
+      await (
+        await run(baseConfig({ instructions: "Static" }), rpc("initialize"))
+      ).json()
+    ).result.instructions,
+  ).toBe("Static");
+  expect(
+    (
+      await (
+        await run(
+          baseConfig({ instructions: async () => undefined }),
+          rpc("initialize"),
+        )
+      ).json()
+    ).result.instructions,
+  ).toBeUndefined();
+});

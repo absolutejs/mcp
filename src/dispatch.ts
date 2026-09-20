@@ -151,7 +151,12 @@ const initialize = async <Caller>(
   id: JsonRpcId,
   params: unknown,
   context: McpDispatchContext,
+  caller: Caller,
 ) => {
+  const instructions =
+    typeof config.instructions === "function"
+      ? await config.instructions({ caller })
+      : config.instructions;
   const supported = config.supportedProtocols ?? DEFAULT_PROTOCOLS;
   const protocolVersion = negotiateProtocol(supported, params);
   const capabilities: Record<string, unknown> = {
@@ -180,9 +185,7 @@ const initialize = async <Caller>(
     };
   const response = rpcResult(id, {
     capabilities,
-    ...(config.instructions === undefined
-      ? {}
-      : { instructions: config.instructions }),
+    ...(instructions === undefined ? {} : { instructions }),
     protocolVersion,
     serverInfo: config.serverInfo,
   });
@@ -1186,7 +1189,7 @@ export const dispatchMcp = async <Caller>(
   const method = typeof message.method === "string" ? message.method : "";
   const { params } = message;
   if (method === "initialize") {
-    return await initialize(config, id, params, context);
+    return await initialize(config, id, params, context, caller);
   }
   if (method === "server/discover") {
     return rpcResult(id, {

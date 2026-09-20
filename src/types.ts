@@ -331,7 +331,12 @@ export type McpServerConfig<Caller> = {
     meta: McpCallMeta;
     name: string;
   }) => Promise<McpCallGate | void> | McpCallGate | void;
-  instructions?: string;
+  /** Static guidance or instructions resolved for the authenticated caller on initialization. */
+  instructions?:
+    | string
+    | ((context: {
+        caller: Caller;
+      }) => string | undefined | Promise<string | undefined>);
   /** The token issuer — used for discovery metadata and the challenge URL. */
   issuer: string;
   /** Turn on elicitation (server asks the USER a question mid-tool-call).

@@ -6,6 +6,20 @@
 			"changes": [
 				{
 					"kind": "added",
+					"summary": "Resolve initialization instructions per authenticated caller using an optional asynchronous callback; static instruction strings remain supported.",
+					"symbols": [
+						"McpServerConfig",
+						"dispatchMcp"
+					]
+				}
+			],
+			"date": "2026-09-20",
+			"version": "0.26.4"
+		},
+		{
+			"changes": [
+				{
+					"kind": "added",
 					"summary": "Support optional confidential OAuth client authentication during code and refresh exchange without exposing secrets to authorization URLs or resource requests.",
 					"symbols": [
 						"McpOAuthOptions",

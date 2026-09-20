@@ -493,3 +493,7 @@ and deferred task calls produce one final record when their execution finishes.
 An audit-hook exception is logged without replacing the executed tool result.
 Hosts must redact credentials and choose payload size and retention limits before
 persisting records. These records do not include the client's surrounding chat.
+
+### Per-account instructions
+
+`instructions` accepts a string or `async ({ caller }) => string | undefined`. The callback runs for the authenticated caller at initialization, without a shared caller cache. Refresh policy in tool results when settings can change during an existing session.
