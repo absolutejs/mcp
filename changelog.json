@@ -3,6 +3,20 @@
 	"name": "@absolutejs/mcp",
 	"releases": [
 		{
+			"version": "0.27.0",
+			"date": "2026-09-25",
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Serve local newline-delimited MCP sessions through the existing dispatcher, with bounded framing and protocol-only output.",
+					"symbols": [
+						"serveMcpStdio",
+						"McpStdioOptions"
+					]
+				}
+			]
+		},
+		{
 			"changes": [
 				{
 					"kind": "fixed",
