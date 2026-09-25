@@ -503,3 +503,15 @@ persisting records. These records do not include the client's surrounding chat.
 `onCallStart` runs before tool dispatch. Persist a start receipt there; throwing prevents execution. `onCall` runs once at completion, including streamed/deferred execution. Its failure never replaces an executed result: use a durable local outbox or equivalent reconciliation mechanism, not a retry of the effect. A start without completion means incomplete evidence, not success.
 
 For Bun/Node servers, import `withMcpCall` and `currentMcpCall` from `@absolutejs/mcp/call-context`, and set `withCallContext: withMcpCall` on the server config. The main entry remains browser-compatible; other runtimes can supply their own context adapter. `currentMcpCall()` exposes server-generated trace identity, request/session identity, tool, server version and the per-call metadata object across asynchronous execution. Use it to correlate downstream metering. Bind domain identifiers only after authorization; incoming arguments and external conversation identifiers are not authority. `withMcpCall` is available for trusted host adapters. Concurrent calls have isolated contexts. External host conversations, host-side retries and subscription costs are not visible to this server.
+
+### Local stdio servers
+
+`@absolutejs/mcp/stdio` exports `serveMcpStdio({ config, caller, scopes, input,
+write })`. Supply an async byte stream (for example `Bun.stdin.stream()`) and a
+protocol-only writer. It reuses the HTTP registry and dispatcher with bounded,
+newline-delimited UTF-8 framing. The launching OS user is the local identity;
+each tool remains responsible for authorizing remote actions. This initial
+adapter processes calls sequentially and does not advertise elicitation, Apps,
+or background tasks. Keep tools bounded; return a job reference for longer work.
+Never send credentials or private delivery payloads through tool results, stdout,
+stderr, prompts, or resources. Use a separate trusted local sink for such values.
