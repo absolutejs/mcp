@@ -497,3 +497,15 @@ persisting records. These records do not include the client's surrounding chat.
 ### Per-account instructions
 
 `instructions` accepts a string or `async ({ caller }) => string | undefined`. The callback runs for the authenticated caller at initialization, without a shared caller cache. Refresh policy in tool results when settings can change during an existing session.
+
+### Local stdio servers
+
+`@absolutejs/mcp/stdio` exports `serveMcpStdio({ config, caller, scopes, input,
+write })`. Supply an async byte stream (for example `Bun.stdin.stream()`) and a
+protocol-only writer. It reuses the HTTP registry and dispatcher with bounded,
+newline-delimited UTF-8 framing. The launching OS user is the local identity;
+each tool remains responsible for authorizing remote actions. This initial
+adapter processes calls sequentially and does not advertise elicitation, Apps,
+or background tasks. Keep tools bounded; return a job reference for longer work.
+Never send credentials or private delivery payloads through tool results, stdout,
+stderr, prompts, or resources. Use a separate trusted local sink for such values.
