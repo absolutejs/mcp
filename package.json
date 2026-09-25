@@ -52,6 +52,11 @@
       "types": "./dist/src/stdio.d.ts",
       "import": "./dist/stdio.js",
       "default": "./dist/stdio.js"
+    },
+    "./local-auth": {
+      "types": "./dist/src/local-auth.d.ts",
+      "import": "./dist/local-auth.js",
+      "default": "./dist/local-auth.js"
     }
   },
   "publishConfig": {
@@ -83,7 +88,7 @@
     "HUBSPOT_IMPLEMENTATION.md"
   ],
   "scripts": {
-    "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts src/stdio.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
+    "build": "bun run build:apps && rm -rf dist && bun build src/index.ts src/manifest.ts src/commerce.ts src/apps.ts src/stdio.ts src/local-auth.ts --outdir dist --root ./src --target=bun --external @absolutejs/agency --external '@absolutejs/agency/*' --external elysia && tsc --emitDeclarationOnly --project tsconfig.json && absolute-manifest emit",
     "format": "prettier --write \"./**/*.{ts,json,md}\"",
     "release": "bun run format && bun run test && bun run build && bun publish",
     "test": "bun run build:apps && bun test",
@@ -96,5 +101,5 @@
     "canary:checkout": "bun canary/checkout.ts"
   },
   "types": "./dist/src/index.d.ts",
-  "version": "0.27.0"
+  "version": "0.27.1"
 }

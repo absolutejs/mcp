@@ -3,6 +3,19 @@
 	"name": "@absolutejs/mcp",
 	"releases": [
 		{
+			"version": "0.27.1",
+			"date": "2026-09-25",
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Add a private local device-flow client with serialized rotating-token storage and status-only authentication responses.",
+					"symbols": [
+						"createLocalMcpAuthorization"
+					]
+				}
+			]
+		},
+		{
 			"version": "0.27.0",
 			"date": "2026-09-25",
 			"changes": [
