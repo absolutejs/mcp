@@ -185,8 +185,4 @@ export {
   registeredMcpCommerce,
 } from "./registeredCommerce";
 
-export {
-  currentMcpCall,
-  withMcpCall,
-  type McpCallIdentity,
-} from "./callContext";
+export type { McpCallIdentity } from "./types";

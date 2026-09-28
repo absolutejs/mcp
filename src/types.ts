@@ -201,6 +201,18 @@ export type McpPromptDefinition = {
   title: string;
 };
 
+/** Server-generated identity. Client arguments must never overwrite this context. */
+export type McpCallIdentity = {
+  traceId: string;
+  requestId: string | number | null;
+  sessionId: string | null;
+  name: string;
+  startedAt: number;
+  serverName: string;
+  serverVersion: string;
+  meta: McpCallMeta;
+};
+
 /** Per-call scratchpad shared between `tools`, `beforeCall`, and `onCall` for
  *  one `tools/call` request. A tool handler can write to it (e.g. record which
  *  entity it touched) and `onCall` can read it back for the audit row. */
@@ -356,6 +368,9 @@ export type McpServerConfig<Caller> = {
   };
   /** Page size for tools/prompts/resources list pagination (default 50). */
   listPageSize?: number;
+  /** Optional runtime adapter for ambient call context. The portable core does
+   * not import Node APIs. Bun/Node hosts can pass withMcpCall from /call-context. */
+  withCallContext?: <T>(identity: McpCallIdentity, run: () => T) => T;
   /** Persist a start receipt before dispatch. A failure prevents tool execution.
    * Completion hooks remain non-disruptive: never retry an executed effect to
    * repair its audit. Hosts can detect incomplete calls from the start receipt. */

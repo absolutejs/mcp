@@ -1,4 +1,3 @@
-import { withMcpCall } from "./callContext";
 import { clientSupportsMcpApps, appResourceContent } from "./apps";
 import { evaluateCommerce, type CommerceDecision } from "./commerce";
 // The MCP method dispatcher. Pure and framework-free: given the server config,
@@ -613,7 +612,8 @@ const toolsCall = async <Caller>(
     isRecord(params) && typeof params.name === "string"
       ? params.name
       : "(invalid)";
-  return withMcpCall(
+  const enter = config.withCallContext ?? ((_identity, run) => run());
+  return enter(
     {
       traceId: meta.traceId,
       requestId: id,

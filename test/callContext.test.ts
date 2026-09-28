@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { dispatchMcp } from "../src/dispatch";
-import { currentMcpCall } from "../src/callContext";
+import { currentMcpCall, withMcpCall } from "../src/callContext";
 import type { McpServerConfig } from "../src/types";
 const server = (): McpServerConfig<string> => ({
+  withCallContext: withMcpCall,
   issuer: "https://test.invalid",
   path: "/mcp",
   serverInfo: { name: "test", version: "1" },

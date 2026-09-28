@@ -1,9 +1,10 @@
-import { currentMcpCall } from "../src/callContext";
+import { currentMcpCall, withMcpCall } from "../src/callContext";
 import { expect, test } from "bun:test";
 import { dispatchMcp, type McpServerConfig } from "../src/index";
 
 type Audit = Parameters<NonNullable<McpServerConfig<string>["onCall"]>>[0];
 const config = (records: Audit[]): McpServerConfig<string> => ({
+  withCallContext: withMcpCall,
   issuer: "https://example.test",
   path: "/mcp",
   serverInfo: { name: "test", version: "1" },
