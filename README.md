@@ -497,3 +497,9 @@ persisting records. These records do not include the client's surrounding chat.
 ### Per-account instructions
 
 `instructions` accepts a string or `async ({ caller }) => string | undefined`. The callback runs for the authenticated caller at initialization, without a shared caller cache. Refresh policy in tool results when settings can change during an existing session.
+
+### Durable audit admission and usage correlation
+
+`onCallStart` runs before tool dispatch. Persist a start receipt there; throwing prevents execution. `onCall` runs once at completion, including streamed/deferred execution. Its failure never replaces an executed result: use a durable local outbox or equivalent reconciliation mechanism, not a retry of the effect. A start without completion means incomplete evidence, not success.
+
+`currentMcpCall()` exposes server-generated trace identity, request/session identity, tool, server version and the per-call metadata object across asynchronous execution. Use it to correlate downstream metering. Bind domain identifiers only after authorization; incoming arguments and external conversation identifiers are not authority. `withMcpCall` is available for trusted host adapters. Concurrent calls have isolated contexts. External host conversations, host-side retries and subscription costs are not visible to this server.

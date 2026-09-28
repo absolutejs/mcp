@@ -1,3 +1,4 @@
+import { withMcpCall } from "./callContext";
 import { clientSupportsMcpApps, appResourceContent } from "./apps";
 import { evaluateCommerce, type CommerceDecision } from "./commerce";
 // The MCP method dispatcher. Pure and framework-free: given the server config,
@@ -608,40 +609,69 @@ const toolsCall = async <Caller>(
     startedAt: Date.now(),
     sessionId: context.sessionId ?? null,
   };
-  let response: Response;
-  try {
-    response = await toolsCallInner(
-      config,
-      caller,
-      scopes,
-      id,
-      params,
-      context,
+  const name =
+    isRecord(params) && typeof params.name === "string"
+      ? params.name
+      : "(invalid)";
+  return withMcpCall(
+    {
+      traceId: meta.traceId,
+      requestId: id,
+      sessionId: meta.sessionId,
+      name,
+      startedAt: meta.startedAt,
+      serverName: config.serverInfo.name,
+      serverVersion: config.serverInfo.version,
       meta,
-    );
-  } catch (error) {
-    response = rpcError(
-      id,
-      JSONRPC_INTERNAL_ERROR,
-      error instanceof Error ? error.message : "Tool dispatch failed",
-    );
-  }
-  if (!meta.auditRecorded && !meta.auditDeferred) {
-    const payload: unknown = await response.clone().json();
-    await emitToolAudit(
-      config,
-      caller,
-      id,
-      isRecord(params) && typeof params.name === "string"
-        ? params.name
-        : "(invalid)",
-      isRecord(params) ? (params.arguments ?? {}) : {},
-      meta,
-      payload,
-      "rejected",
-    );
-  }
-  return response;
+    },
+    async () => {
+      let response: Response;
+      try {
+        if (config.onCallStart)
+          await config.onCallStart({
+            args: isRecord(params) ? (params.arguments ?? {}) : {},
+            caller,
+            meta,
+            name,
+            requestId: id,
+            traceId: meta.traceId,
+            sessionId: meta.sessionId,
+            startedAt: meta.startedAt,
+          });
+        response = await toolsCallInner(
+          config,
+          caller,
+          scopes,
+          id,
+          params,
+          context,
+          meta,
+        );
+      } catch (error) {
+        response = rpcError(
+          id,
+          JSONRPC_INTERNAL_ERROR,
+          error instanceof Error ? error.message : "Tool dispatch failed",
+        );
+      }
+      if (!meta.auditRecorded && !meta.auditDeferred) {
+        const payload: unknown = await response.clone().json();
+        await emitToolAudit(
+          config,
+          caller,
+          id,
+          isRecord(params) && typeof params.name === "string"
+            ? params.name
+            : "(invalid)",
+          isRecord(params) ? (params.arguments ?? {}) : {},
+          meta,
+          payload,
+          "rejected",
+        );
+      }
+      return response;
+    },
+  );
 };
 
 const toolsCallInner = async <Caller>(

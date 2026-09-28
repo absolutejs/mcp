@@ -172,8 +172,21 @@ export {
   type McpCreditWorkSnapshot,
 } from "./creditWorkResult";
 
-export { createBackgroundWorkTools, createBackgroundWorkResult, type McpBackgroundWorkSnapshot } from "./backgroundWork";
+export {
+  createBackgroundWorkTools,
+  createBackgroundWorkResult,
+  type McpBackgroundWorkSnapshot,
+} from "./backgroundWork";
 
 export type { McpBackgroundWorkEstimate } from "./backgroundWork";
 
-export { registeredMcpProfiles, registeredMcpCommerce } from "./registeredCommerce";
+export {
+  registeredMcpProfiles,
+  registeredMcpCommerce,
+} from "./registeredCommerce";
+
+export {
+  currentMcpCall,
+  withMcpCall,
+  type McpCallIdentity,
+} from "./callContext";

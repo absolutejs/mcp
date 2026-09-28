@@ -356,6 +356,19 @@ export type McpServerConfig<Caller> = {
   };
   /** Page size for tools/prompts/resources list pagination (default 50). */
   listPageSize?: number;
+  /** Persist a start receipt before dispatch. A failure prevents tool execution.
+   * Completion hooks remain non-disruptive: never retry an executed effect to
+   * repair its audit. Hosts can detect incomplete calls from the start receipt. */
+  onCallStart?: (record: {
+    args: unknown;
+    caller: Caller;
+    meta: McpCallMeta;
+    name: string;
+    requestId: string | number | null;
+    traceId: string;
+    sessionId: string | null;
+    startedAt: number;
+  }) => Promise<void> | void;
   /** Fired after every `tools/call` for auditing. `meta` carries anything the
    *  tool handler wrote during the call. Includes pre-execution rejections;
    *  streamed/deferred calls report once when execution finishes. Hook failures

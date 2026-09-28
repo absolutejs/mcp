@@ -1,3 +1,4 @@
+import { currentMcpCall } from "../src/callContext";
 import { expect, test } from "bun:test";
 import { dispatchMcp, type McpServerConfig } from "../src/index";
 
@@ -8,6 +9,7 @@ const config = (records: Audit[]): McpServerConfig<string> => ({
   serverInfo: { name: "test", version: "1" },
   authorize: async () => ({ caller: "test", ok: true, scopes: [] }),
   onCall: (record) => {
+    expect(currentMcpCall()?.traceId).toBe(record.traceId);
     records.push(record);
   },
   tools: () => ({
@@ -94,6 +96,7 @@ test("deferred tool execution audits once at completion instead of misreporting 
     complete = resolve;
   });
   server.onCall = (record) => {
+    expect(currentMcpCall()?.traceId).toBe(record.traceId);
     records.push(record);
     complete?.();
   };
