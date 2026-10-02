@@ -3,8 +3,20 @@
 	"name": "@absolutejs/mcp",
 	"releases": [
 		{
-			"version": "0.27.1",
-			"date": "2026-09-25",
+			"changes": [
+				{
+					"kind": "added",
+					"summary": "Call context: withCallContext and onCallStart server options, the @absolutejs/mcp/call-context export (withMcpCall, currentMcpCall) and the McpCallIdentity type",
+					"symbols": [
+						"McpCallIdentity",
+						"McpServerConfig"
+					]
+				}
+			],
+			"date": "2026-10-02",
+			"version": "0.28.0"
+		},
+		{
 			"changes": [
 				{
 					"kind": "added",
@@ -13,11 +25,11 @@
 						"createLocalMcpAuthorization"
 					]
 				}
-			]
+			],
+			"date": "2026-09-25",
+			"version": "0.27.1"
 		},
 		{
-			"version": "0.27.0",
-			"date": "2026-09-25",
 			"changes": [
 				{
 					"kind": "added",
@@ -27,7 +39,9 @@
 						"McpStdioOptions"
 					]
 				}
-			]
+			],
+			"date": "2026-09-25",
+			"version": "0.27.0"
 		},
 		{
 			"changes": [
