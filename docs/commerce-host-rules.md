@@ -1,5 +1,11 @@
 # Commerce through MCP: host rules and shared package design
 
+**Current review: [October 20, 2026](reviews/service-access-2026-10-20.md).**
+Review due dates (including legacy `expiresAt`) are advisory for all callers.
+Use `reviewAfter` for reminders, monitor `reviewDueIds` in call audit metadata,
+and set `revoked: true` to withdraw a grant. Historical expiry language below
+is superseded by this rule; token, quote and action-approval expiries remain.
+
 Reviewed: **2026-09-10**. Owner: `@absolutejs/mcp`, with shared services in the AbsoluteJS ecosystem. Status: **host-eligibility foundation implemented; remaining commerce architecture is a design, not a certification**.
 
 ## Scope and evidence
@@ -261,7 +267,7 @@ All sources below were opened during research on 2026-09-10. Summaries above are
 
 The first slice exports `evaluateCommerce` through `@absolutejs/mcp/commerce`, adds server-owned `McpTool.commerce` classification and a `McpServerConfig.commerce` resolver, filters tagged tools in discovery, and rechecks eligibility before handler execution. Decisions carry policy version, reason and review evidence into the call audit metadata. No client-name autodetection or live checkout is enabled.
 
-The bundled rules cover the explicit restrictions established above; the broad host inventory currently maps to reviewed direct/self-hosted or unknown profiles rather than claiming every host has been verified. Missing policy, malformed categories, ambiguous restrictions, expired reviews and unavailable capabilities block the action. Deployment reviews cannot override bundled restrictions.
+The bundled rules cover the explicit restrictions established above; the broad host inventory currently maps to reviewed direct/self-hosted or unknown profiles rather than claiming every host has been verified. Missing policy, malformed categories, ambiguous restrictions, explicitly revoked reviews and unavailable capabilities block the action. Deployment reviews cannot override bundled restrictions.
 
 This slice is not a general content filter: prompts, resources, untagged tools and arbitrary returned links require the shared evaluator at their own presentation boundaries. Shared renderers, native capability plumbing, checkout sessions, prepaid accounting changes and live cross-host conformance remain to implement. Existing Agency enforcement remains independent.
 
@@ -334,15 +340,15 @@ not certify the untested hosts or broaden any executable commerce profile.
 
 ### Evidence required for each advertised host
 
-| Gate | Required evidence | Owner |
-| --- | --- | --- |
-| Distribution and policy | Exact host surface, account agreement, category, actions, official sources, dated interpretation and expiry | Package review; deployment supplies verified binding |
-| Authentication | Real signup/consent return, exact registration/account, refresh, revoked access and cross-account rejection | Auth package primitives and consumer integration |
-| Presentation | Installed version, actual negotiated capabilities, visible first load, refresh, pagination and text fallback | MCP package fixture; real host test |
-| Funded access | Subscription-free access, portal denial, explicit budget, settlement, retry conflict and recovery at zero | Billing package and consumer services |
-| Checkout, if eligible | Own HTTPS origin, explicit browser confirmation, server-priced intent, idempotent grant and uncertain-outcome recovery | Shared handoff plus consumer gateway |
-| Work effects | Immutable approval version, ownership, expiry, repeat-safe execution and durable status; rendering performs no action | Shared workflow contract and consumer handler |
-| Operations | Manual or automated validation, deployment readiness, reconciliation, support procedure and rollback preserving financial records | Consumer deployment |
+| Gate                    | Required evidence                                                                                                                 | Owner                                                |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Distribution and policy | Exact host surface, account agreement, category, actions, official sources, dated interpretation and expiry                       | Package review; deployment supplies verified binding |
+| Authentication          | Real signup/consent return, exact registration/account, refresh, revoked access and cross-account rejection                       | Auth package primitives and consumer integration     |
+| Presentation            | Installed version, actual negotiated capabilities, visible first load, refresh, pagination and text fallback                      | MCP package fixture; real host test                  |
+| Funded access           | Subscription-free access, portal denial, explicit budget, settlement, retry conflict and recovery at zero                         | Billing package and consumer services                |
+| Checkout, if eligible   | Own HTTPS origin, explicit browser confirmation, server-priced intent, idempotent grant and uncertain-outcome recovery            | Shared handoff plus consumer gateway                 |
+| Work effects            | Immutable approval version, ownership, expiry, repeat-safe execution and durable status; rendering performs no action             | Shared workflow contract and consumer handler        |
+| Operations              | Manual or automated validation, deployment readiness, reconciliation, support procedure and rollback preserving financial records | Consumer deployment                                  |
 
 Mark each gate **passed**, **qualified**, **pending** or **not offered**, with a
 link to evidence. A successful report fixture is not OAuth certification; a

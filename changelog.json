@@ -3,6 +3,27 @@
 	"name": "@absolutejs/mcp",
 	"releases": [
 		{
+			"version": "0.30.0",
+			"date": "2026-10-20",
+			"changes": [
+				{
+					"kind": "breaking",
+					"summary": "Make commerce review dates advisory for all callers; preserve host restrictions and support explicit review revocation.",
+					"symbols": [
+						"CommerceReview",
+						"CommerceDecision",
+						"evaluateCommerce",
+						"COMMERCE_POLICY_VERSION",
+						"COMMERCE_POLICY_SOURCES"
+					],
+					"migration": {
+						"manual": true,
+						"instruction": "Use reviewAfter for operator reminders; legacy expiresAt is advisory too. Use revoked: true to withdraw a review. Monitor reviewDueIds from commerce audit decisions; do not use review reminders as customer access gates."
+					}
+				}
+			]
+		},
+		{
 			"changes": [
 				{
 					"kind": "fixed",

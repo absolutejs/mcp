@@ -108,9 +108,11 @@ describe("commerce eligibility", () => {
     ctx.profiles = ["direct-mcp", "chatgpt-plugin"];
     expect(evaluateCommerce(credits, ctx, now).status).toBe("restricted");
   });
-  test("expired, future, category-mismatched and invalid-source reviews fail closed", () => {
+  test("revoked, malformed, future, category-mismatched and invalid-source reviews fail closed", () => {
     for (const change of [
-      { expiresAt: now.toISOString() },
+      { revoked: true },
+      { expiresAt: "invalid" },
+      { reviewAfter: "invalid" },
       { reviewedAt: "2099-01-01" },
       { sourceUrls: [] },
       { sourceUrls: ["javascript:alert(1)"] },
@@ -120,6 +122,27 @@ describe("commerce eligibility", () => {
       Object.assign(ctx.reviews![0]!, change);
       expect(evaluateCommerce(credits, ctx, now).allowed).toBe(false);
     }
+  });
+  test("review reminders never remove funded access, including legacy expiries", () => {
+    for (const reminder of [
+      { expiresAt: "2026-09-10T12:00:00Z" },
+      { expiresAt: undefined, reviewAfter: "2026-09-10T12:00:00Z" },
+    ]) {
+      const ctx = reviewed();
+      Object.assign(ctx.reviews![0]!, reminder);
+      for (const date of [now, new Date("2040-01-01")]) {
+        expect(evaluateCommerce(credits, ctx, date)).toMatchObject({
+          allowed: true,
+          reviewDueIds: ["review-1"],
+        });
+      }
+    }
+    const ctx = reviewed();
+    delete ctx.reviews![0]!.expiresAt;
+    expect(evaluateCommerce(credits, ctx, now)).toMatchObject({
+      allowed: true,
+      reviewDueIds: [],
+    });
   });
   test("missing capabilities cannot be papered over by review", () => {
     const ctx = reviewed();
@@ -305,8 +328,13 @@ describe("MCP commerce enforcement", () => {
     let meta: unknown;
     const cfg = config(
       () => executed++,
-      () => reviewed(),
+      () => {
+        const ctx = reviewed();
+        ctx.reviews![0]!.expiresAt = "2020-01-01";
+        return ctx;
+      },
     );
+    expect((await rpc(cfg, "tools/list")).result.tools).toHaveLength(2);
     cfg.onCall = (r) => {
       meta = r.meta;
     };
@@ -315,7 +343,11 @@ describe("MCP commerce enforcement", () => {
     ).toBe("checkout");
     expect(executed).toBe(1);
     expect(meta).toMatchObject({
-      commerceDecision: { allowed: true, reviewIds: ["review-1"] },
+      commerceDecision: {
+        allowed: true,
+        reviewIds: ["review-1"],
+        reviewDueIds: ["review-1"],
+      },
     });
   });
 });

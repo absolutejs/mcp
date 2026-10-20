@@ -1,6 +1,8 @@
 # Account-independent service access
 
-Reviewed September 13, 2026; re-review by October 13, 2026.
+Reviewed September 13, 2026; source review renewed October 20, 2026.
+See [current review](service-access-2026-10-20.md). The former October 13
+deadline is an operator reminder, not a service cutoff.
 This supersedes the per-account canary condition for the general-access deployment,
 not the published host restrictions or the requirement for explicit payment approval.
 
@@ -57,5 +59,5 @@ than reusing a native/direct review. Do not advertise an untested host as tested
 The package does not grant access by itself: the deployment supplies dated reviews,
 capabilities, authentication, entitlement checks, rate limits and billing. Restrictive
 published rules override these reviews. Account IDs are used to scope data and
-charges, not to select an eligible customer cohort. Expired review evidence closes
-paid tools while status/recovery remains available.
+charges, not to select an eligible customer cohort. Review reminders never close paid tools. Explicit review revocation or a
+substantive host restriction blocks affected actions; status/recovery remains available.

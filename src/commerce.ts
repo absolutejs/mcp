@@ -1,11 +1,11 @@
 /** Host commerce eligibility, not payment authorization. All inputs are
  * server-owned; never derive a permissive profile from clientInfo alone. */
-export const COMMERCE_POLICY_VERSION = "2026-09-10.1";
+export const COMMERCE_POLICY_VERSION = "2026-10-20.1";
 export const COMMERCE_POLICY_SOURCES = Object.freeze({
   claude:
     "https://support.claude.com/en/articles/13454812-use-interactive-connectors-in-claude",
   chatgpt:
-    "https://developers.openai.com/plugins/app-guidelines#commerce-and-monetization",
+    "https://developers.openai.com/plugins/plugin-guidelines#commerce-and-monetization",
   chatgptCheckout: "https://developers.openai.com/plugins/build/monetization",
   cursorMarketplace: "https://cursor.com/marketplace-publisher-terms",
 });
@@ -43,7 +43,12 @@ export type CommerceReview = {
   actions: readonly CommerceAction[];
   categories: readonly CommerceCategory[];
   reviewedAt: string;
-  expiresAt: string;
+  /** Operational reminder only; never an automatic access cutoff. */
+  reviewAfter?: string;
+  /** @deprecated Use reviewAfter. Legacy expiry dates are reminders too. */
+  expiresAt?: string;
+  /** Explicit withdrawal of this review, effective immediately. */
+  revoked?: boolean;
   sourceUrls: readonly string[];
 };
 export type CommerceContext = {
@@ -64,6 +69,8 @@ export type CommerceDecision = {
   policyVersion: string;
   sourceUrls: string[];
   reviewIds: string[];
+  /** Overdue reviews for operator/audit reporting, never customer gating. */
+  reviewDueIds: string[];
 };
 const actions = new Set<string>([
   "entitlement_status",
@@ -103,6 +110,7 @@ const decision = (
   reason: string,
   sourceUrls: string[] = [],
   reviewIds: string[] = [],
+  reviewDueIds: string[] = [],
 ): CommerceDecision => ({
   allowed: status === "permitted",
   status,
@@ -110,6 +118,7 @@ const decision = (
   policyVersion: COMMERCE_POLICY_VERSION,
   sourceUrls,
   reviewIds,
+  reviewDueIds,
 });
 const validSource = (source: string) => {
   try {
@@ -134,14 +143,18 @@ const reviewed = (
   req.categories.every((c) => review.categories.includes(c)) &&
   Number.isFinite(Date.parse(review.reviewedAt)) &&
   Date.parse(review.reviewedAt) <= now &&
-  Number.isFinite(Date.parse(review.expiresAt)) &&
-  Date.parse(review.expiresAt) > now &&
+  (review.revoked === undefined || review.revoked === false) &&
+  (review.reviewAfter === undefined ||
+    Number.isFinite(Date.parse(review.reviewAfter))) &&
+  (review.expiresAt === undefined ||
+    Number.isFinite(Date.parse(review.expiresAt))) &&
   Array.isArray(review.sourceUrls) &&
   review.sourceUrls.length > 0 &&
   review.sourceUrls.every(validSource);
 
 /** Published restrictions cannot be overridden by a deployment review.
- * Unverified paths need explicit, fresh server-side review evidence. */
+ * Unverified paths need explicit server-side review evidence. Review reminders
+ * never revoke access; restrictions or explicit withdrawal do. */
 export const evaluateCommerce = (
   req: CommerceRequirement,
   context: CommerceContext,
@@ -199,6 +212,11 @@ export const evaluateCommerce = (
           "reviewed_deployment",
           [...review.sourceUrls],
           [review.id],
+          [review.reviewAfter, review.expiresAt].some(
+            (date) => date !== undefined && Date.parse(date) <= now.getTime(),
+          )
+            ? [review.id]
+            : [],
         )
       : decision("unverified", "commerce_review_required");
   });
@@ -232,6 +250,7 @@ export const evaluateCommerce = (
     "host_commerce_eligible",
     [...new Set(results.flatMap((r) => r.sourceUrls))],
     [...new Set(results.flatMap((r) => r.reviewIds))],
+    [...new Set(results.flatMap((r) => r.reviewDueIds))],
   );
 };
 
