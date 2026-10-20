@@ -5,6 +5,20 @@
 		{
 			"changes": [
 				{
+					"kind": "added",
+					"summary": "Expose a stable insufficient-funding error for top-up recovery without parsing messages",
+					"symbols": [
+						"McpFundingRequiredError",
+						"createBackgroundWorkTools"
+					]
+				}
+			],
+			"date": "2026-10-20",
+			"version": "0.29.1"
+		},
+		{
+			"changes": [
+				{
 					"kind": "breaking",
 					"migration": {
 						"instruction": "Configure resolveBudget on paid tools or estimate and availableCredits on background tools. Use budgetPolicy explicit only when spending approval is required. Accounting is in metadata; includeAccounting restores billing output.",

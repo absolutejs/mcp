@@ -1,6 +1,15 @@
 import { budgetedMcpTool, type McpCreditWorkRequest } from "./budgetedTool";
 import type { McpTool, McpToolRegistry, McpToolResult } from "./types";
 
+/** Stable funding signal for host top-up UI; no work has started. */
+export class McpFundingRequiredError extends Error {
+  readonly code = "insufficient_credits";
+  constructor(public readonly required: number, public readonly available: number) {
+    super("Additional available credits are required. Saved work remains available.");
+    this.name = "McpFundingRequiredError";
+  }
+}
+
 export type McpBackgroundWorkEstimate = {
   minimumCredits: number;
   estimatedCredits: number;
@@ -198,9 +207,7 @@ export const createBackgroundWorkTools = (options: {
                 ceiling ?? Number.MAX_SAFE_INTEGER,
               );
               if (!Number.isSafeInteger(budget) || budget < plan.minimumCredits)
-                throw new Error(
-                  "Additional available credits are required. Saved work remains available.",
-                );
+                throw new McpFundingRequiredError(plan.minimumCredits, budget);
               return budget;
             },
       tool: {

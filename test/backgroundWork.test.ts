@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  McpFundingRequiredError,
   createBackgroundWorkTools,
   createBackgroundWorkResult,
   type McpBackgroundWorkSnapshot,
@@ -149,7 +150,7 @@ test("automatic budgets are the default, top-ups are exceptional, and replay kee
       { requestId: "new", input: {} },
       context,
     ),
-  ).rejects.toThrow("Additional available credits");
+  ).rejects.toBeInstanceOf(McpFundingRequiredError);
   expect(
     await tools.continue_background_work!.handler(
       { requestId: "job" },

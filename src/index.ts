@@ -173,6 +173,7 @@ export {
 } from "./creditWorkResult";
 
 export {
+  McpFundingRequiredError,
   createBackgroundWorkTools,
   createBackgroundWorkResult,
   type McpBackgroundWorkSnapshot,
