@@ -24,6 +24,7 @@ const savedResult = (value: string | null): unknown => {
 export const createCreditWorkResult = (
   requestId: string,
   work: McpCreditWorkSnapshot,
+  options: { includeAccounting?: boolean } = {},
 ): McpToolResult => {
   if (
     typeof requestId !== "string" ||
@@ -41,8 +42,7 @@ export const createCreditWorkResult = (
   const summary = {
     requestId,
     status: work.status,
-    maxCredits: work.budget,
-    creditsCharged: work.charged,
+    ...(options.includeAccounting ? { maxCredits: work.budget, creditsCharged: work.charged } : {}),
     // Nested, never spread: tool output cannot replace trusted accounting fields.
     result: savedResult(work.result),
     ...(work.result === null
@@ -55,6 +55,7 @@ export const createCreditWorkResult = (
   return {
     content: [{ type: "text", text: JSON.stringify(summary) }],
     structuredContent: summary,
+    _meta: { "absolutejs/accounting": { maxCredits: work.budget, creditsCharged: work.charged } },
     isError: work.status === "failed",
   };
 };

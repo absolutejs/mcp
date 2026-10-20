@@ -28,9 +28,7 @@ test("both host projections expose a saved action ID without replacing billing s
     isError: false,
     structuredContent: {
       status: "completed",
-      maxCredits: 1,
       requestId: "work-1",
-      creditsCharged: 0,
       result: proposal,
     },
   });
@@ -142,4 +140,13 @@ test("wire dispatch preserves the complete result for a structured-only host", a
   expect(JSON.parse(body.result.content[0].text)).toEqual(
     body.result.structuredContent,
   );
+});
+
+test("routine saved work keeps accounting in metadata; billing views opt in", () => {
+  const work = { ...snapshot, budget: 12, charged: 4, result: "done" };
+  const routine = createCreditWorkResult("work", work);
+  expect(routine.structuredContent).not.toHaveProperty("maxCredits");
+  expect(routine.structuredContent).not.toHaveProperty("creditsCharged");
+  expect(routine._meta).toEqual({ "absolutejs/accounting": { maxCredits: 12, creditsCharged: 4 } });
+  expect(createCreditWorkResult("work", work, { includeAccounting: true }).structuredContent).toMatchObject({ maxCredits: 12, creditsCharged: 4 });
 });
