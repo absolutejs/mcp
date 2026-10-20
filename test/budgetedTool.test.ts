@@ -26,7 +26,7 @@ test("credit wrapper validates budget before execution and forwards only nested 
   expect(wrapped.commerce?.action).toBe("paid_access");
   await expect(
     wrapped.handler({ requestId: "id", maxCredits: -1, input: {} }, context),
-  ).rejects.toThrow("positive credit budget");
+  ).rejects.toThrow("Invalid credit ceiling");
   expect(calls).toBe(0);
   expect(
     await wrapped.handler(

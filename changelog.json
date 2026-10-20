@@ -5,6 +5,26 @@
 		{
 			"changes": [
 				{
+					"kind": "breaking",
+					"migration": {
+						"instruction": "Configure resolveBudget on paid tools or estimate and availableCredits on background tools. Use budgetPolicy explicit only when spending approval is required. Accounting is in metadata; includeAccounting restores billing output.",
+						"manual": true
+					},
+					"summary": "Default paid research to server-managed budgets and task-focused output with optional explicit spending policy",
+					"symbols": [
+						"budgetedMcpTool",
+						"createBackgroundWorkTools",
+						"createBackgroundWorkResult",
+						"McpBackgroundWorkSnapshot"
+					]
+				}
+			],
+			"date": "2026-10-20",
+			"version": "0.29.0"
+		},
+		{
+			"changes": [
+				{
 					"kind": "added",
 					"summary": "Call context: withCallContext and onCallStart server options, the @absolutejs/mcp/call-context export (withMcpCall, currentMcpCall) and the McpCallIdentity type",
 					"symbols": [

@@ -465,7 +465,7 @@ work; this helper does not authorize access or filter the tool's saved payload.
 ## Budgeted background work
 
 `createBackgroundWorkTools({ description, inputSchema, start, read })` exposes
-`start_background_work` with a stable requestId and maximum service credits, plus
+`start_background_work` with a stable requestId and a server-managed budget, plus
 read-only `get_background_work` recovery. Omit `start` to support recovery at zero
 credits or while rollout is disabled. Account ownership must come from the
 authenticated caller, never tool arguments.
@@ -515,3 +515,29 @@ adapter processes calls sequentially and does not advertise elicitation, Apps,
 or background tasks. Keep tools bounded; return a job reference for longer work.
 Never send credentials or private delivery payloads through tool results, stdout,
 stderr, prompts, or resources. Use a separate trusted local sink for such values.
+
+### Automatic credit use is the default
+
+`budgetedMcpTool` defaults to automatic funding. Configure
+`resolveBudget(requestId, input, ceiling?)` to return the saved budget on replay,
+or a bounded budget based on current spendable credits. The executor still
+atomically reserves, validates exact input, and deduplicates work. The automatic
+tool schema does not ask the model for `maxCredits`. Old direct calls carrying a
+ceiling remain supported; the resolver must not increase that ceiling.
+
+For `createBackgroundWorkTools`, configure `estimate` and `availableCredits`.
+The default resolves the saved budget first, otherwise caps the estimate at the
+available balance. It requests funding only when the minimum step cannot start.
+Use `budgetPolicy: "explicit"` only when the host deliberately requires spending
+approval; action authorization and external-effect approvals are unaffected.
+Hosts without automatic funding adapters must migrate before exposing the new
+schema. Do not replace missing configuration with an unbounded allowance.
+
+Background snapshots support `paused`, `pauseReason`, and `canContinue`. A `resume`
+adapter exposes `continue_background_work` and must atomically claim the saved
+continuation, never start the original task again. Reading saved work is free.
+Routine output includes progress and results; accounting is in
+`_meta["absolutejs/accounting"]`. Use `createBackgroundWorkResult` with
+`{ includeAccounting: true }` for explicit billing requests. Hosts must render
+progress and restore task state after reconnect; the package does not promise
+chat delivery without a connected renderer.
