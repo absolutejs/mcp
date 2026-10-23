@@ -1,4 +1,4 @@
-import type { McpSessionStore, McpTool } from "./types";
+import type { McpSessionStore, McpTool, McpToolResult } from "./types";
 import { isRecord } from "./guards";
 export const MCP_APP_MIME = "text/html;profile=mcp-app";
 export type McpAppResource = { name: string; html: string };
@@ -100,3 +100,34 @@ export {
   type ActionConfirmation,
   type ActionJob,
 } from "./actionWorkflow";
+
+/** Keep complete presentation state out of model context. The compact model data
+ * must include outcomes, blockers and authorized retrieval references. This is
+ * projection, not truncation; callers decide which facts the model needs. */
+export const createMcpAppResult = (input: {
+  model: Record<string, unknown>;
+  view: Record<string, unknown>;
+  text?: string;
+  isError?: boolean;
+  meta?: Record<string, unknown>;
+}): McpToolResult => ({
+  content: [{ type: "text", text: input.text ?? JSON.stringify(input.model) }],
+  structuredContent: input.model,
+  _meta: { ...input.meta, "absolutejs/app-view": input.view },
+  ...(input.isError === undefined ? {} : { isError: input.isError }),
+});
+
+/** Read the full host-only view, accepting older results during rolling upgrades. */
+export const readMcpAppView = (
+  result: unknown,
+): Record<string, unknown> | undefined => {
+  if (!isRecord(result)) return undefined;
+  const view = isRecord(result._meta)
+    ? result._meta["absolutejs/app-view"]
+    : undefined;
+  return isRecord(view)
+    ? view
+    : isRecord(result.structuredContent)
+      ? result.structuredContent
+      : undefined;
+};

@@ -541,3 +541,15 @@ Routine output includes progress and results; accounting is in
 `{ includeAccounting: true }` for explicit billing requests. Hosts must render
 progress and restore task state after reconnect; the package does not promise
 chat delivery without a connected renderer.
+
+### Compact model context, complete app views
+
+`createMcpAppResult({ model, view, text? })` returns compact `structuredContent`
+and places complete presentation state under `_meta["absolutejs/app-view"]`,
+which MCP hosts deliver to the app rather than the model. `readMcpAppView(result)`
+reads that state and accepts legacy `structuredContent` during rolling upgrades.
+Keep outcomes, blockers, revisions and authorized retrieval references in `model`.
+Do not put secrets in presentation metadata; the connected host and app receive it.
+A non-app host still receives the compact model data and can retrieve detail with
+the same authorized tools. Avoid serializing full state into both text and
+structured output on every mutation.

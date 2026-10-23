@@ -133,6 +133,8 @@ export {
 } from "./billingTools";
 export {
   MCP_APP_MIME,
+  createMcpAppResult,
+  readMcpAppView,
   clientSupportsMcpApps,
   withMcpApp,
   type McpAppResource,
