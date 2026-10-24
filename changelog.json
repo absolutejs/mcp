@@ -5,6 +5,20 @@
 		{
 			"changes": [
 				{
+					"kind": "fixed",
+					"summary": "Local device sign-in survives restarts and other sessions, keeps a connection when a refresh never left the machine, and reports a lost refresh response as AUTH_REFRESH_UNCERTAIN instead of replaying a spent token"
+				},
+				{
+					"kind": "added",
+					"summary": "LocalMcpAuthError carries a code (AUTH_REQUIRED, AUTH_BUSY, AUTH_UNAVAILABLE, AUTH_REFRESH_UNCERTAIN, AUTH_STORAGE) so callers can tell retry from sign-in"
+				}
+			],
+			"date": "2026-10-24",
+			"version": "0.31.0"
+		},
+		{
+			"changes": [
+				{
 					"kind": "added",
 					"summary": "Keep complete MCP App presentation data outside model context with compact explicit outcomes and retrieval references",
 					"symbols": [
