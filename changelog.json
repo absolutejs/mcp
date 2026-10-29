@@ -6,6 +6,19 @@
 			"changes": [
 				{
 					"kind": "fixed",
+					"summary": "Preserve failed and uncertain background task outcomes as successful status reads without masking missing work or restarting paid execution",
+					"symbols": [
+						"createBackgroundWorkResult"
+					]
+				}
+			],
+			"date": "2026-10-29",
+			"version": "0.31.1"
+		},
+		{
+			"changes": [
+				{
+					"kind": "fixed",
 					"summary": "Local device sign-in survives restarts and other sessions, keeps a connection when a refresh never left the machine, and reports a lost refresh response as AUTH_REFRESH_UNCERTAIN instead of replaying a spent token"
 				},
 				{

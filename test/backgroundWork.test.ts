@@ -182,3 +182,45 @@ test("routine task output keeps accounting out of model-facing content", () => {
       .structuredContent,
   ).toMatchObject({ creditsCharged: 3 });
 });
+
+for (const status of [
+  "queued",
+  "running",
+  "completed",
+  "paused",
+  "stopped",
+  "failed",
+  "unknown",
+] as const) {
+  test(`reading ${status} work preserves its outcome without starting work`, async () => {
+    let starts = 0;
+    const tools = createBackgroundWorkTools({
+      description: "Research",
+      inputSchema: {},
+      read: async () => ({ ...snapshot, status }),
+      start: async () => {
+        starts++;
+        return snapshot;
+      },
+    });
+    const context = {} as Parameters<
+      NonNullable<typeof tools.get_background_work>["handler"]
+    >[1];
+    const result = await tools.get_background_work!.handler(
+      { requestId: "job" },
+      context,
+    );
+    expect(result).toMatchObject({
+      isError: false,
+      structuredContent: {
+        requestId: "job",
+        status,
+        results: snapshot.results,
+        canContinue: false,
+      },
+    });
+    expect(starts).toBe(0);
+    if (status === "unknown")
+      expect(JSON.stringify(result)).toContain("Do not start another job");
+  });
+}

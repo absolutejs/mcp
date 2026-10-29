@@ -4,8 +4,13 @@ import type { McpTool, McpToolRegistry, McpToolResult } from "./types";
 /** Stable funding signal for host top-up UI; no work has started. */
 export class McpFundingRequiredError extends Error {
   readonly code = "insufficient_credits";
-  constructor(public readonly required: number, public readonly available: number) {
-    super("Additional available credits are required. Saved work remains available.");
+  constructor(
+    public readonly required: number,
+    public readonly available: number,
+  ) {
+    super(
+      "Additional available credits are required. Saved work remains available.",
+    );
     this.name = "McpFundingRequiredError";
   }
 }
@@ -89,7 +94,8 @@ export const createBackgroundWorkResult = (
     },
     content: [{ type: "text", text: JSON.stringify(summary) }],
     structuredContent: summary,
-    isError: work.status === "failed" || work.status === "unknown",
+    // A task outcome is data, not a failure to read or dispatch the task.
+    isError: false,
   };
 };
 
