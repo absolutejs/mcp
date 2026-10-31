@@ -224,3 +224,30 @@ for (const status of [
       expect(JSON.stringify(result)).toContain("Do not start another job");
   });
 }
+
+test("execution completion preserves unmet fulfillment in text and structured results", () => {
+  const fulfillment = {
+    status: "partial" as const,
+    summary:
+      "Research finished with two of eight qualified targets. More research is needed.",
+  };
+  const result = createBackgroundWorkResult("job", {
+    ...snapshot,
+    status: "completed",
+    settled: true,
+    fulfillment,
+  });
+  expect(result.structuredContent).toMatchObject({
+    status: "completed",
+    fulfillment,
+    message: fulfillment.summary,
+  });
+  expect(result.content[0]?.type).toBe("text");
+  expect(result.isError).toBe(false);
+  const unknown = createBackgroundWorkResult("job", {
+    ...snapshot,
+    status: "unknown",
+    fulfillment,
+  });
+  expect(unknown.structuredContent?.message).toContain("uncertain outcome");
+});

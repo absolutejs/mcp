@@ -5,6 +5,19 @@
 		{
 			"changes": [
 				{
+					"kind": "added",
+					"summary": "Expose requested-outcome fulfillment separately from background execution and billing status",
+					"symbols": [
+						"McpBackgroundWorkSnapshot"
+					]
+				}
+			],
+			"date": "2026-10-31",
+			"version": "0.31.2"
+		},
+		{
+			"changes": [
+				{
 					"kind": "fixed",
 					"summary": "Preserve failed and uncertain background task outcomes as successful status reads without masking missing work or restarting paid execution",
 					"symbols": [

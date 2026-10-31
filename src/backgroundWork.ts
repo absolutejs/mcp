@@ -31,6 +31,11 @@ export type McpBackgroundWorkSnapshot = {
     | "stopped"
     | "failed"
     | "unknown";
+  /** Execution completion does not establish that the requested outcome was delivered. */
+  fulfillment?: {
+    status: "fulfilled" | "partial" | "unverified";
+    summary: string;
+  };
   pauseReason?: string;
   canContinue?: boolean;
   budget: number;
@@ -68,9 +73,19 @@ export const createBackgroundWorkResult = (
     ].includes(work.status)
   )
     throw new Error("Invalid background work snapshot");
+  if (
+    work.fulfillment &&
+    (!["fulfilled", "partial", "unverified"].includes(
+      work.fulfillment.status,
+    ) ||
+      !work.fulfillment.summary.trim() ||
+      work.fulfillment.summary.length > 2000)
+  )
+    throw new Error("Invalid background fulfillment");
   const summary = {
     requestId,
     status: work.status,
+    ...(work.fulfillment ? { fulfillment: work.fulfillment } : {}),
     pauseReason: work.pauseReason,
     canContinue: work.canContinue ?? false,
     ...(options.includeAccounting
@@ -83,7 +98,9 @@ export const createBackgroundWorkResult = (
     message:
       work.status === "unknown"
         ? "A step has an uncertain outcome. Saved results remain available; credits stay held pending reconciliation. Do not start another job to retry it."
-        : "Read get_background_work with this requestId to recover saved progress and spend. Reading never starts or repeats work.",
+        : work.fulfillment && work.status === "completed"
+          ? work.fulfillment.summary
+          : "Read get_background_work with this requestId to recover saved progress and spend. Reading never starts or repeats work.",
   };
   return {
     _meta: {
