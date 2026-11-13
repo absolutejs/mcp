@@ -16,14 +16,16 @@ For an existing VS Code connection, run **MCP: Reset Cached Tools**, then **Deve
 
 `apps.allowKnownBrokenHosts: true` bypasses the version exclusion for controlled testing. It still requires the host to advertise the Apps MIME capability. Don't enable it on ordinary affected installations.
 
-### Verification still owed
+### Native verification (2026-11-12)
 
-The 1.147.0 cutoff relies on the upstream fix and the source-level checker. It has not been runtime-verified in a released host. Before answering `/verified` upstream or certifying rich views, do the following on native Windows Insiders (`d8e7b56` or later), and again on stable 1.147.0 when it ships:
+We tested portable native Windows builds against the synthetic loopback canary, with no real accounts or payments.
 
-1. Test fresh conversations, repeated mounts, refresh and receipt pagination across balance, usage and receipts.
-2. Repeat the 350ms delayed-first-hash test that reproduced the blank view on 1.135.0.
+- **Insiders `d8e7b56` (`1.147.0-insider`):** all three report Apps rendered in a fresh chat. We confirmed this by reading the text inside each App frame. Scrolling the views away and back forces webview unmount and remount; across those sweeps there were about 250 on-screen checks and none were blank. Reload Window with a restored session rendered the views again without extra tool calls. Refresh worked on balance and usage, and receipt pagination reached the empty final page with "Older receipts" hidden. With alternate origin-hash digests delayed by 350ms, the race fired twice, a newer mount's hash finishing while an older one was pending, and no view went blank.
+- **Stable 1.146.0:** it connected as `Visual Studio Code` 1.146.0 with the Apps MIME type, and MCP 0.31.3 withheld UI metadata (text fallback confirmed). Chats restored from before the change show "MCP server … isn't available yet" in place of the App; that is cosmetic.
+- **Not established:** the delayed-hash control on stable. Its Copilot agent did not expose the workspace server's tools, so no App rendered there to blank. The Insiders race result therefore rests on the September 1.135.0 reproduction and the source checker, not on a same-day control.
+- **Host identity:** the 1.147 Copilot agent harness ("new Copilot experience") initializes MCP as `copilot-cli` 1.0.110-1, not `Visual Studio Code`. A pre-1.147 build running that harness would bypass the version cutoff. We accept this as a transitional gap, because `copilot-cli` carries no editor version and fixed builds use the same identity.
 
-Ordinary successful runs don't prove the fix, because the failure is timing-sensitive.
+Stable 1.147.0 still needs a quick recheck when it ships.
 
 ### Removal
 

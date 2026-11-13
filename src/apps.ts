@@ -16,7 +16,10 @@ export type McpAppsConfig = {
 // and Insiders build carries the unguarded mount, which can replace a
 // connected iframe and leave an App blank. VS Code reports
 // productService.nameLong/version, so Insiders arrives as its own name with a
-// plain x.y.z version. An unparseable version is not evidence of the bug.
+// suffixed version such as "1.147.0-insider"; only major.minor is compared. The
+// 1.147 Copilot agent harness connects as "copilot-cli" instead, which carries
+// no editor version and is left to normal negotiation. An unparseable version
+// is not evidence of the bug.
 const VS_CODE_NAMES = new Set([
   "Visual Studio Code",
   "Visual Studio Code - Insiders",
