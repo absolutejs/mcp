@@ -104,6 +104,10 @@ The issue is tracked in [microsoft/vscode#335908](https://github.com/microsoft/v
 
 Native Windows VS Code 1.135.0 verification: after removing the in-memory editor patch, reconnecting alone left cached UI metadata and produced resource errors. Running **MCP: Reset Cached Tools**, reloading the window and opening a new chat cleared it. The final run returned all three reports as visible text, with three successful tool calls, no resource reads and no App frames. This is a verified text fallback, not rich rendering evidence.
 
+## Upstream fix and widened fallback (0.31.3)
+
+Upstream fixed the race in [microsoft/vscode#346646](https://github.com/microsoft/vscode/pull/346646), which ships in 1.147.0. The fallback now covers every VS Code and Insiders build below 1.147.0. Earlier releases matched only 1.135.0 and 1.136.1 and missed 1.137 to 1.146. The source checker passes on the upstream fix. Rich rendering on 1.147.0 or Insiders `d8e7b56` and later has not been runtime-verified. Run the native checklist in [UPSTREAM_ISSUES.md](../UPSTREAM_ISSUES.md) before treating that host as certified.
+
 ## Synthetic external-checkout canary
 
 `bun run canary:checkout` (installed: `bun node_modules/@absolutejs/mcp/canary/checkout.ts`)

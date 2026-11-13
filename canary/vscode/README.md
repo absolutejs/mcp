@@ -28,6 +28,6 @@ Some unmodified first-load runs passed too: this is a timing-sensitive failure, 
 
 ## Delivery status
 
-The bug is reported in [microsoft/vscode#335908](https://github.com/microsoft/vscode/issues/335908); no PR was submitted. This package distributes the source patch and checker for review, but does not modify installed editors. The test-process patch disappears on restart.
+We reported the bug in [microsoft/vscode#335908](https://github.com/microsoft/vscode/issues/335908). Upstream fixed it in [microsoft/vscode#346646](https://github.com/microsoft/vscode/pull/346646) (commit `7a1fb57`), which ships in 1.147.0 and in Insiders from `d8e7b56`. The checker supports both the 1.135.0 layout and the newer one, which adds `generateUuid`, `hashParentOrigin` and `_mountDisposables`. On 2026-11-12 it failed on 1.135.0 and passed all four checks on 1.135.0 with this patch, on `7a1fb57`, and on `main`. Run it against a new upstream checkout to catch a regression of the guard.
 
-MCP 0.17.6 instead defaults affected versions to text and structured reports. Reconnect after upgrading to negotiate the fallback. See [UPSTREAM_ISSUES.md](../../UPSTREAM_ISSUES.md) for the exact version scope, diagnostic override and removal conditions. Rich first-load support remains unverified in an unmodified released host.
+The package itself does not modify installed editors. MCP 0.31.3 serves text and structured reports to VS Code builds below 1.147.0. See [UPSTREAM_ISSUES.md](../../UPSTREAM_ISSUES.md) for the scope, the override, the native verification still owed and the removal conditions.

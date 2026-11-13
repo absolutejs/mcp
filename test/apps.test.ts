@@ -286,12 +286,17 @@ test("package client advertises Apps only when enabled and preserves remote UI m
 });
 
 test("affected VS Code versions use text fallback without hiding report tools", async () => {
-  for (const version of ["1.135.0", "1.136.1"]) {
+  for (const [name, version] of [
+    ["Visual Studio Code", "1.135.0"],
+    ["Visual Studio Code", "1.136.1"],
+    ["Visual Studio Code", "1.146.0"],
+    ["Visual Studio Code - Insiders", "1.146.0"],
+  ] as const) {
     const handler = createMcpHandler(config());
     const initialized = await handler(
       rpc("initialize", {
         ...initialize([MCP_APP_MIME]),
-        clientInfo: { name: "Visual Studio Code", version },
+        clientInfo: { name, version },
       }),
     );
     const session = initialized!.headers.get("mcp-session-id")!;
@@ -313,10 +318,14 @@ test("affected VS Code versions use text fallback without hiding report tools", 
     expect((await resource!.json()).error).toBeDefined();
   }
 });
-test("host workaround is narrowly scoped and verified patched builds can opt in", async () => {
+test("VS Code builds with the mount fix keep Apps and the override still opts in", async () => {
   for (const [name, version, override] of [
     ["Claude", "1.135.0", false],
-    ["Visual Studio Code", "1.137.0", false],
+    ["Visual Studio Code", "1.147.0", false],
+    ["Visual Studio Code - Insiders", "1.147.0", false],
+    ["Visual Studio Code", "1.150.2", false],
+    ["Visual Studio Code", "2.0.0", false],
+    ["Visual Studio Code", "unknown", false],
     ["Visual Studio Code", "1.135.0", true],
   ] as const) {
     const cfg = config();

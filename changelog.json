@@ -5,6 +5,23 @@
 		{
 			"changes": [
 				{
+					"kind": "fixed",
+					"summary": "Serve text reports instead of MCP Apps to every VS Code and VS Code Insiders build before 1.147.0, not only 1.135.0 and 1.136.1, since all of them have the webview mount race behind blank Apps",
+					"symbols": [
+						"clientSupportsMcpApps"
+					]
+				},
+				{
+					"kind": "internal",
+					"summary": "VS Code mount-race checker runs against current upstream webviewElement.ts as well as 1.135.0"
+				}
+			],
+			"date": "2026-11-13",
+			"version": "0.31.3"
+		},
+		{
+			"changes": [
+				{
 					"kind": "added",
 					"summary": "Expose requested-outcome fulfillment separately from background execution and billing status",
 					"symbols": [

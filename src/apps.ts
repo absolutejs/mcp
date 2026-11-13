@@ -11,6 +11,29 @@ export type McpAppsConfig = {
   resourceAliases?: Record<string, string>;
   store?: McpSessionStore;
 };
+// https://github.com/microsoft/vscode/issues/335908, fixed by
+// microsoft/vscode#346646 on main after 1.146.0 was cut. Every earlier stable
+// and Insiders build carries the unguarded mount, which can replace a
+// connected iframe and leave an App blank. VS Code reports
+// productService.nameLong/version, so Insiders arrives as its own name with a
+// plain x.y.z version. An unparseable version is not evidence of the bug.
+const VS_CODE_NAMES = new Set([
+  "Visual Studio Code",
+  "Visual Studio Code - Insiders",
+]);
+const VS_CODE_MOUNT_FIX = [1, 147] as const;
+const hasVsCodeMountRace = (clientInfo: unknown) => {
+  if (!isRecord(clientInfo) || typeof clientInfo.name !== "string")
+    return false;
+  if (!VS_CODE_NAMES.has(clientInfo.name)) return false;
+  const match = /^(\d+)\.(\d+)\.\d+/.exec(String(clientInfo.version));
+  if (!match) return false;
+  const [major, minor] = [Number(match[1]), Number(match[2])];
+  return (
+    major < VS_CODE_MOUNT_FIX[0] ||
+    (major === VS_CODE_MOUNT_FIX[0] && minor < VS_CODE_MOUNT_FIX[1])
+  );
+};
 /** Capability is presentation only; never a commerce or authorization decision. */
 export const clientSupportsMcpApps = (
   params: unknown,
@@ -22,16 +45,7 @@ export const clientSupportsMcpApps = (
     !isRecord(params.capabilities.extensions)
   )
     return false;
-  // https://github.com/microsoft/vscode/issues/335908
-  // A stale host startup can replace a connected iframe and leave Apps blank.
-  // Scope this presentation fallback to versions checked in our investigation.
-  if (
-    !options.allowKnownBrokenHosts &&
-    isRecord(params.clientInfo) &&
-    params.clientInfo.name === "Visual Studio Code" &&
-    (params.clientInfo.version === "1.135.0" ||
-      params.clientInfo.version === "1.136.1")
-  )
+  if (!options.allowKnownBrokenHosts && hasVsCodeMountRace(params.clientInfo))
     return false;
   const ui = params.capabilities.extensions["io.modelcontextprotocol/ui"];
   return (

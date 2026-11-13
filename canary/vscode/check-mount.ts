@@ -26,18 +26,25 @@ for (const order of [
     "parentOriginHash",
     "EventType",
     "addDisposableListener",
+    "generateUuid",
     `${javascript};return MountProbe;`,
   );
+  const hash = () => new Promise<string>((resolve) => pending.push(resolve));
+  let uuid = 0;
   const Constructor = create(
-    () => new Promise<string>((resolve) => pending.push(resolve)),
+    hash,
     {},
     () => ({}),
+    () => `mount-${++uuid}`,
   ) as new () => Probe;
   const probe = new Constructor();
   Object.assign(probe, {
-    element: {},
+    element: { remove: () => {} },
     origin: "test",
+    _mountDisposables: { add: () => {}, clear: () => {} },
     _disposed: false,
+    // Newer upstream sources route the hash through this overridable hook.
+    hashParentOrigin: hash,
     _registerMessageHandler: () => {},
     _register: () => {},
     perfMark: () => {},
